@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap &amp; Risks — Project Nobel</title>
+<meta name="description" content="Phased delivery plan, open questions, risk register, and owner-by-owner next steps for Project Nobel.">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="brand-dot"></span> Project Nobel <small>Docs</small></a>
+    <nav class="nav">
+      <a href="index.html">Overview</a>
+      <a href="prd.html">PRD</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="data-model.html">Data &amp; API</a>
+      <a href="roadmap.html" class="active">Roadmap</a>
+      <button class="icon-btn" data-theme-toggle type="button">◐</button>
+    </nav>
+  </div>
+  <div class="progress"></div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Document 04 — Planning</span>
+    <h1>Roadmap &amp; Risks</h1>
+    <p class="lede">
+      What we build first and why, the open questions that need answers before we commit further,
+      an honest risk register, and who owns what this week.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item"><div class="k">Owner</div><div class="v">Sabari</div></div>
+      <div class="meta-item"><div class="k">Version</div><div class="v">0.1 — Draft</div></div>
+      <div class="meta-item"><div class="k">Audience</div><div class="v">Whole team + customer</div></div>
+      <div class="meta-item"><div class="k">Reading time</div><div class="v">~11 minutes</div></div>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <aside class="toc">
+      <div class="toc-label">Contents</div>
+      <a href="#read">1. How to read this</a>
+      <a href="#week0">2. Week 0 — prove the mic works</a>
+      <a href="#phase1">3. Phase 1 — single-store pilot</a>
+      <a href="#phase2">4. Phase 2 — scale &amp; hardware</a>
+      <a href="#timeline">5. Timeline at a glance</a>
+      <a href="#open">6. Open questions</a>
+      <a href="#risks">7. Risk register</a>
+      <a href="#next">8. Owner-by-owner next steps</a>
+    </aside>
+
+    <main>
+
+      <h2 id="read"><span class="section-num">01</span>How to read this</h2>
+      <p>
+        This roadmap is sequenced around de-risking the two things that are unproven, not around
+        building features. If <a href="index.html#bets">bet 1 or bet 2</a> from the overview turns out
+        false, most of what comes after Phase 1 is wasted work — so we spend real time confirming
+        them before building anything expensive.
+      </p>
+
+      <h2 id="week0"><span class="section-num">02</span>Week 0 — prove the mic works</h2>
+      <p>
+        Before writing pipeline code, spend two days recording real store audio on an ordinary
+        phone, in a pocket and on a lanyard, and listening to it. This is the cheapest possible test
+        of the single riskiest assumption in the product.
+      </p>
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-title">What we do</div>
+          <ul class="checklist">
+            <li>Record 3–4 real associate-customer conversations at a live or friendly store</li>
+            <li>Try phone in shirt pocket vs. on a lanyard at chest height</li>
+            <li>Manually transcribe a sample and compare against what Voicemaker returns</li>
+            <li>Note background noise conditions: quiet showroom vs. busy floor</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">What tells us to stop or continue</div>
+          <ul>
+            <li><strong>Continue as planned</strong> if the customer's side is intelligible to a human listener in most recordings.</li>
+            <li><strong>Revisit mic placement</strong> (lanyard, not pocket) if pocket audio is bad but lanyard audio is fine.</li>
+            <li><strong>Escalate to external mic / Phase 2 hardware</strong> if even lanyard audio can't reliably capture the customer.</li>
+          </ul>
+        </div>
+      </div>
+      <p>Also verify in this window: Android battery-manager kill behaviour on at least one aggressive OEM device (Xiaomi, Oppo, or similar) over a full multi-hour recording session — see <a href="architecture.html#mobile">mobile app &amp; recording</a>.</p>
+
+      <h2 id="phase1"><span class="section-num">03</span>Phase 1 — single-store pilot</h2>
+      <p>Phone mic only, one store, small enough that we can watch it closely and cheap enough to be wrong about parts of it.</p>
+      <div class="grid g3">
+        <div class="card">
+          <div class="card-title">In scope</div>
+          <ul class="checklist">
+            <li>React Native app: start/pause/end shift, chunked upload</li>
+            <li>Supabase backend, storage, edge functions</li>
+            <li>Voicemaker transcription with multi-channel diarization</li>
+            <li>Segmentation + rubric scoring pipeline</li>
+            <li>Daily feedback via app and/or WhatsApp</li>
+            <li>Weekly manager dashboard</li>
+            <li>Hindi + English support</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Explicitly deferred</div>
+          <ul class="crosslist">
+            <li>External mics or dedicated hardware</li>
+            <li>Languages beyond Hindi/English</li>
+            <li>Sales attribution to conversations</li>
+            <li>Live/real-time coaching</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Exit criteria</div>
+          <p>The <a href="prd.html#success">success metrics table</a> in the PRD — usable-capture
+          rate, coverage, transcription accuracy, score agreement with a human manager, and whether
+          associates say they'd keep using it.</p>
+        </div>
+      </div>
+
+      <h2 id="phase2"><span class="section-num">04</span>Phase 2 — scale &amp; hardware</h2>
+      <p>Only entered if Phase 1's exit criteria are met. Two separate expansions, not necessarily simultaneous:</p>
+      <ul>
+        <li><strong>More stores, same store type.</strong> Tests whether the pipeline holds under real operational variance — different noise floors, different manager habits, different Wi-Fi reliability.</li>
+        <li><strong>External mic / dedicated hardware.</strong> Only if Week 0 or Phase 1 shows phone-mic audio quality is the ceiling on everything else. Adds cost and rollout friction, so only pursued if the data says the phone mic genuinely can't get there.</li>
+      </ul>
+      <p>Languages beyond Hindi and English, and sales attribution via POS integration, are Phase 2 candidates but not commitments — see <a href="prd.html#notdoing">what we are not doing</a> for why each is deferred rather than ruled out.</p>
+
+      <h2 id="timeline"><span class="section-num">05</span>Timeline at a glance</h2>
+      <div class="timeline">
+        <div class="tl-item done">
+          <div class="tl-when">Week 0</div>
+          <div class="tl-what">Audio quality spike</div>
+          <p>Real-world recording test, background-recording survival check on Android.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-when">Weeks 1–2</div>
+          <div class="tl-what">Recording &amp; upload</div>
+          <p>Mobile app: shift lifecycle, Opus compression, chunked resumable upload.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-when">Weeks 2–3</div>
+          <div class="tl-what">Transcription &amp; segmentation</div>
+          <p>Voicemaker integration, multi-channel diarization live, conversation boundary detection.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-when">Weeks 3–4</div>
+          <div class="tl-what">Rubric &amp; scoring</div>
+          <p>Rubric v1 from the retailer, scoring pipeline, feedback message generation.</p>
+        </div>
+        <div class="tl-item">
+          <div class="tl-when">Weeks 4–5</div>
+          <div class="tl-what">Delivery &amp; dashboard</div>
+          <p>Daily feedback delivery, weekly manager view, end-to-end dry run with internal test data.</p>
+        </div>
+        <div class="tl-item later">
+          <div class="tl-when">Week 6+</div>
+          <div class="tl-what">Live pilot</div>
+          <p>Real associates, real store, watched closely against the exit criteria above.</p>
+        </div>
+      </div>
+      <p class="caption">Indicative, not committed. Every phase after Week 0 assumes diarization lands and audio quality holds — see open questions below.</p>
+
+      <h2 id="open"><span class="section-num">06</span>Open questions</h2>
+      <p>Referenced from the <a href="index.html#decided">overview</a> and the <a href="prd.html#notdoing">PRD</a>. Every item needs an owner and a target date before Phase 1 can be called complete.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Owner</th><th>Target</th></tr></thead>
+          <tbody>
+            <tr><td>Do we keep audio after transcription, or only the transcript?</td><td>Sabari</td><td>Before Phase 1 build starts</td></tr>
+            <tr><td>Continuous vs. triggered recording — always-on, or associate taps to start each conversation?</td><td>Sabari</td><td>End of Week 0</td></tr>
+            <tr><td>Consent mechanism for the customer — signage alone, or something explicit?</td><td>Yatin</td><td>Before pilot store go-live</td></tr>
+            <tr><td>Feedback channel — in-app, WhatsApp, or both from day one?</td><td>Sabari</td><td>Weeks 3–4</td></tr>
+            <tr><td>Diarization quality — unproven until Voicemaker multi-channel is live</td><td>Sujit</td><td>Within 1 week</td></tr>
+            <tr><td>Dialect accuracy — Punjabi-accented Hindi is a known gap, untested</td><td>Sujit</td><td>During Weeks 2–3</td></tr>
+            <tr><td>Scoring transparency — does the associate see the transcript behind a score?</td><td>Sabari + Yatin</td><td>Weeks 3–4</td></tr>
+            <tr><td>Battery cost of an 8-hour recording session, unmeasured</td><td>Sabari</td><td>End of Week 0</td></tr>
+            <tr><td>Legal review of DPDP position ahead of the second customer</td><td>Yatin</td><td>Before Phase 2 commitment</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="risks"><span class="section-num">07</span>Risk register</h2>
+      <p>Stated plainly, matching the <a href="prd.html#fail">failure modes in the PRD</a> but framed for tracking rather than narrative.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>Phone mic can't reliably capture the customer</td><td><span class="pill p-red">Low confidence it works</span></td><td>Critical</td><td>Week 0 spike; fallback to lanyard placement or external mic</td></tr>
+            <tr><td>Associates stop running the app</td><td><span class="pill p-yellow">Medium</span></td><td>High</td><td>Make pausing frictionless and never penalised; monitor coverage weekly</td></tr>
+            <tr><td>Scores feel wrong to associates, trust collapses</td><td><span class="pill p-yellow">Medium</span></td><td>High</td><td>Always show the supporting quote; scoring transparency decision above</td></tr>
+            <tr><td>Scores get used punitively despite commitments</td><td><span class="pill p-yellow">Medium</span></td><td>Critical</td><td>Contractual commitment with retailer; visible in onboarding materials</td></tr>
+            <tr><td>Diarization not ready in time</td><td><span class="pill p-yellow">Medium</span></td><td>High</td><td>Sujit's one-week target; blocks segmentation and scoring if missed</td></tr>
+            <tr><td>Feedback is accurate but behaviour doesn't change</td><td><span class="pill p-yellow">Medium</span></td><td>Medium</td><td>Only answerable by running the pilot long enough to see score trends</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="next"><span class="section-num">08</span>Owner-by-owner next steps</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Person</th><th>Owns</th><th>Immediate next step</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Sabari</strong></td>
+              <td>System architecture, mobile app, backend pipeline</td>
+              <td>Run the Week 0 audio spike, then start the React Native recording build</td>
+            </tr>
+            <tr>
+              <td><strong>Sujit</strong></td>
+              <td>Transcription stack, Voicemaker integration</td>
+              <td>Enable multi-channel diarization; share API docs with Sabari</td>
+            </tr>
+            <tr>
+              <td><strong>Yatin</strong></td>
+              <td>Customer relationship, rubric definition, pilot site</td>
+              <td>Set up the three-way group; get rubric v1 from the retailer; scope the consent mechanism</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <div class="t">This is a living document</div>
+        <p>
+          Dates here are planning targets, not commitments to the customer. Update this page as Week 0
+          results come in — if bet 1 turns out wrong, the whole sequencing above changes, and that
+          should show up here first.
+        </p>
+      </div>
+
+      <div class="pagenav">
+        <a href="data-model.html"><div class="k">Previous</div><div class="v">← Data Model &amp; API</div></a>
+        <a href="index.html"><div class="k">Next</div><div class="v">Back to Overview →</div></a>
+      </div>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div><a href="index.html">Overview</a> · <a href="prd.html">PRD</a> · <a href="architecture.html">Architecture</a> · <a href="data-model.html">Data &amp; API</a></div>
+  </footer>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

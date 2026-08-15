@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Model &amp; API — Project Nobel</title>
+<meta name="description" content="Database tables, storage layout, API contracts, rubric format, and the scoring prompt structure for Project Nobel.">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="brand-dot"></span> Project Nobel <small>Docs</small></a>
+    <nav class="nav">
+      <a href="index.html">Overview</a>
+      <a href="prd.html">PRD</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="data-model.html" class="active">Data &amp; API</a>
+      <a href="roadmap.html">Roadmap</a>
+      <button class="icon-btn" data-theme-toggle type="button">◐</button>
+    </nav>
+  </div>
+  <div class="progress"></div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Document 03 — Engineering</span>
+    <h1>Data Model &amp; API</h1>
+    <p class="lede">
+      The tables, the storage layout, the contracts between app and backend, and the exact shape
+      of a rubric and a scoring prompt. Reference material, not narrative.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item"><div class="k">Owner</div><div class="v">Sabari</div></div>
+      <div class="meta-item"><div class="k">Version</div><div class="v">0.1 — Draft</div></div>
+      <div class="meta-item"><div class="k">Audience</div><div class="v">Engineering</div></div>
+      <div class="meta-item"><div class="k">Reading time</div><div class="v">~13 minutes</div></div>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <aside class="toc">
+      <div class="toc-label">Contents</div>
+      <a href="#scope">1. Scope of this document</a>
+      <a href="#overview">2. Entity overview</a>
+      <a href="#core">3. Core tables</a>
+      <a href="#audio">4. Audio &amp; conversation tables</a>
+      <a href="#rubric-tables">5. Rubric tables</a>
+      <a href="#scores">6. Scores &amp; feedback tables</a>
+      <a href="#storage">7. Storage layout</a>
+      <a href="#mobile-api">8. Mobile → backend API</a>
+      <a href="#voicemaker-api">9. Backend → Voicemaker API</a>
+      <a href="#rubric-format">10. Rubric JSON format</a>
+      <a href="#prompt">11. Scoring prompt structure</a>
+      <a href="#retention">12. Retention &amp; deletion jobs</a>
+    </aside>
+
+    <main>
+
+      <h2 id="scope"><span class="section-num">01</span>Scope of this document</h2>
+      <p>
+        <a href="architecture.html">System Architecture</a> explains why these pieces exist and how
+        they fit together. This document is the concrete shape of each piece — table columns,
+        endpoint contracts, JSON formats — so implementation has one place to check rather than
+        guessing from prose. Field names below are illustrative and will drift as we build; the
+        relationships and reasoning behind them should not.
+      </p>
+
+      <h2 id="overview"><span class="section-num">02</span>Entity overview</h2>
+      <p>Ten entities cover the whole system. Everything else is a join or a derived view.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 900 210" role="img" aria-label="Entity relationship overview: retailer, store, associate, shift, audio chunk, conversation, rubric, rubric item, score, feedback message">
+          <defs>
+            <marker id="ah3" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+              <path d="M0,0 L7,3.2 L0,6.4" class="d-line" fill="none" stroke-width="1.4"/>
+            </marker>
+          </defs>
+
+          <g>
+            <rect x="10" y="82" width="120" height="46" rx="8" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="70" y="110" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Retailer</text>
+          </g>
+          <line x1="130" y1="105" x2="154" y2="105" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="158" y="82" width="110" height="46" rx="8" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="213" y="110" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Store</text>
+          </g>
+          <line x1="268" y1="105" x2="292" y2="105" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="296" y="82" width="130" height="46" rx="8" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="361" y="110" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Associate</text>
+          </g>
+          <line x1="426" y1="105" x2="450" y2="105" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="454" y="82" width="110" height="46" rx="8" class="d-fill2 d-stroke" stroke-width="1"/>
+            <text x="509" y="110" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Shift</text>
+          </g>
+          <line x1="564" y1="105" x2="588" y2="105" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="592" y="82" width="130" height="46" rx="8" class="d-fill2 d-stroke" stroke-width="1"/>
+            <text x="657" y="110" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Audio chunk</text>
+          </g>
+          <line x1="722" y1="105" x2="746" y2="105" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="750" y="82" width="140" height="46" rx="8" class="d-fill2 d-stroke" stroke-width="1"/>
+            <text x="820" y="110" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Conversation</text>
+          </g>
+
+          <line x1="820" y1="82" x2="820" y2="56" class="d-line" stroke-width="1.2"/>
+          <line x1="750" y1="42" x2="820" y2="56" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="620" y="18" width="130" height="42" rx="8" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="685" y="44" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Rubric item</text>
+          </g>
+          <line x1="620" y1="39" x2="450" y2="39" class="d-line" stroke-width="1.2"/>
+          <line x1="450" y1="39" x2="450" y2="18" class="d-line" stroke-width="1.2"/>
+          <g>
+            <rect x="330" y="0" width="120" height="36" rx="8" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="390" y="23" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Rubric</text>
+          </g>
+          <line x1="330" y1="18" x2="213" y2="18" class="d-line" stroke-width="1.2"/>
+          <line x1="213" y1="18" x2="213" y2="82" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+
+          <line x1="820" y1="128" x2="820" y2="152" class="d-line" stroke-width="1.2" marker-end="url(#ah3)"/>
+          <g>
+            <rect x="750" y="156" width="140" height="42" rx="8" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="820" y="181" text-anchor="middle" class="d-text" font-size="12.5" font-weight="620">Score</text>
+          </g>
+        </svg>
+      </div>
+      <p class="caption">
+        Retailer → Store → Associate → Shift → Audio chunk → Conversation is the main spine.
+        Store → Rubric → Rubric item feeds Score, which references a Conversation and a Rubric item.
+      </p>
+
+      <h2 id="core"><span class="section-num">03</span>Core tables</h2>
+
+      <h3><code>retailers</code></h3>
+      <p>The customer organisation. One row per retail chain we work with.</p>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>name</dt><dd>text</dd>
+        <dt>data_fiduciary_contact</dt><dd>text — who at the retailer owns DPDP compliance for their stores</dd>
+      </div>
+
+      <h3><code>stores</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>retailer_id</dt><dd>fk → retailers</dd>
+        <dt>name, city</dt><dd>text</dd>
+        <dt>timezone</dt><dd>text — needed to bucket shifts and daily feedback correctly</dd>
+      </div>
+
+      <h3><code>associates</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>store_id</dt><dd>fk → stores</dd>
+        <dt>display_name</dt><dd>text — first name / preferred name only, not full legal identity</dd>
+        <dt>phone_number</dt><dd>text, encrypted at rest — used for WhatsApp delivery</dd>
+        <dt>consent_signed_at</dt><dd>timestamp — no shift can start recording without this set</dd>
+      </div>
+
+      <h3><code>managers</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>store_id</dt><dd>fk → stores</dd>
+        <dt>auth_user_id</dt><dd>fk → Supabase auth user</dd>
+      </div>
+
+      <h2 id="audio"><span class="section-num">04</span>Audio &amp; conversation tables</h2>
+
+      <h3><code>shifts</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>associate_id</dt><dd>fk → associates</dd>
+        <dt>started_at, ended_at</dt><dd>timestamp — ended_at null while shift is in progress</dd>
+        <dt>device_battery_at_end</dt><dd>int, nullable — for the battery-cost question in the roadmap</dd>
+      </div>
+
+      <h3><code>audio_chunks</code></h3>
+      <p>One row per uploaded chunk, roughly every ~2 hours per shift.</p>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>shift_id</dt><dd>fk → shifts</dd>
+        <dt>sequence_no</dt><dd>int — orders chunks within a shift, independent of upload arrival order</dd>
+        <dt>storage_path</dt><dd>text — see <a href="#storage">storage layout</a></dd>
+        <dt>duration_seconds</dt><dd>int</dd>
+        <dt>transcription_status</dt><dd>enum: pending, processing, done, failed</dd>
+      </div>
+
+      <h3><code>conversations</code></h3>
+      <p>The output of segmentation — the unit everything downstream scores.</p>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>shift_id</dt><dd>fk → shifts</dd>
+        <dt>start_offset_seconds, end_offset_seconds</dt><dd>int — position within the shift timeline</dd>
+        <dt>transcript</dt><dd>text, diarized (speaker-labelled)</dd>
+        <dt>scoreable</dt><dd>boolean — false if audio quality or length disqualifies it, per <a href="architecture.html#score">scoring pipeline</a></dd>
+      </div>
+
+      <h2 id="rubric-tables"><span class="section-num">05</span>Rubric tables</h2>
+
+      <h3><code>rubrics</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>store_id</dt><dd>fk → stores</dd>
+        <dt>version</dt><dd>int — rubrics change; scores must reference the version they were scored against</dd>
+        <dt>active</dt><dd>boolean</dd>
+      </div>
+
+      <h3><code>rubric_items</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>rubric_id</dt><dd>fk → rubrics</dd>
+        <dt>label</dt><dd>text — e.g. "Needs discovery"</dd>
+        <dt>description</dt><dd>text — what to look for, in the retailer's own words</dd>
+        <dt>weight</dt><dd>numeric — sums to 1.0 across a rubric's items</dd>
+      </div>
+
+      <h2 id="scores"><span class="section-num">06</span>Scores &amp; feedback tables</h2>
+
+      <h3><code>conversation_scores</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>conversation_id</dt><dd>fk → conversations</dd>
+        <dt>rubric_item_id</dt><dd>fk → rubric_items</dd>
+        <dt>score</dt><dd>numeric, 0–1</dd>
+        <dt>justification</dt><dd>text</dd>
+        <dt>supporting_quote</dt><dd>text — verbatim from the transcript, never optional</dd>
+      </div>
+
+      <h3><code>daily_feedback</code></h3>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>associate_id</dt><dd>fk → associates</dd>
+        <dt>shift_id</dt><dd>fk → shifts</dd>
+        <dt>message_text</dt><dd>text — under 80 words, per <a href="prd.html#feedback">the feedback rules</a></dd>
+        <dt>delivered_via</dt><dd>enum: app, whatsapp, both</dd>
+        <dt>opened_at</dt><dd>timestamp, nullable — feeds the "does anyone read it" metric in the PRD</dd>
+      </div>
+
+      <h2 id="storage"><span class="section-num">07</span>Storage layout</h2>
+      <p>Object storage paths are namespaced by retailer and store from day one, so per-tenant access control and eventual data export are structural, not bolted on.</p>
+      <pre><code><span class="c">// audio chunk</span>
+retailers/{retailer_id}/stores/{store_id}/shifts/{shift_id}/chunk-{sequence_no}.opus
+
+<span class="c">// transcript, if retained beyond processing</span>
+retailers/{retailer_id}/stores/{store_id}/conversations/{conversation_id}/transcript.txt</code></pre>
+      <p>Whether the audio path is deleted immediately after transcription or retained for a window is the open retention decision — see <a href="roadmap.html#open">roadmap</a>.</p>
+
+      <h2 id="mobile-api"><span class="section-num">08</span>Mobile → backend API</h2>
+      <p>A small, deliberately boring set of endpoints. Everything interesting happens after upload, not in the API surface itself.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>POST /shifts/start</code></td><td>Creates a shift row. Fails if consent is not on file for the associate.</td></tr>
+            <tr><td><code>POST /shifts/{id}/chunks</code></td><td>Multipart upload of one Opus chunk plus sequence number.</td></tr>
+            <tr><td><code>POST /shifts/{id}/end</code></td><td>Marks ended_at, flushes any buffered chunk uploads.</td></tr>
+            <tr><td><code>GET /associates/{id}/feedback/latest</code></td><td>In-app read of the most recent daily feedback message.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="voicemaker-api"><span class="section-num">09</span>Backend → Voicemaker API</h2>
+      <p>
+        Called from a Supabase edge function, triggered on chunk upload. Sends the Opus audio and
+        requests diarized output. Payload is capped by Voicemaker at roughly 100 MB per request —
+        our ~2-3 MB chunks leave large headroom, which is intentional; see
+        <a href="architecture.html#upload">upload &amp; chunking</a> for why chunk size is small
+        by design rather than by necessity.
+      </p>
+      <p>Multi-channel diarization is not enabled on Voicemaker's side yet — until it is, responses carry text without a reliable speaker label, which blocks segmentation and scoring.</p>
+
+      <h2 id="rubric-format"><span class="section-num">10</span>Rubric JSON format</h2>
+      <p>What a retailer's rubric looks like on the wire — human-editable, versioned, weights summing to 1.0.</p>
+      <pre><code>{
+  <span class="s">"store_id"</span>: <span class="s">"..."</span>,
+  <span class="s">"version"</span>: 1,
+  <span class="s">"items"</span>: [
+    {
+      <span class="s">"label"</span>: <span class="s">"Greeting"</span>,
+      <span class="s">"description"</span>: <span class="s">"Associate speaks first, within ~30s, with a warm opening rather than 'yes?'"</span>,
+      <span class="s">"weight"</span>: 0.10
+    },
+    {
+      <span class="s">"label"</span>: <span class="s">"Needs discovery"</span>,
+      <span class="s">"description"</span>: <span class="s">"Asks about use case, budget, or who the product is for before recommending"</span>,
+      <span class="s">"weight"</span>: 0.25
+    }
+  ]
+}</code></pre>
+      <p>See <a href="prd.html#rubric">what "good" means</a> for why this is retailer-authored rather than something we impose.</p>
+
+      <h2 id="prompt"><span class="section-num">11</span>Scoring prompt structure</h2>
+      <p>The scoring call takes a diarized transcript and the active rubric, and must return structured output — never freeform prose, so the app can render scores and quotes reliably.</p>
+      <pre><code><span class="c">// input</span>
+{
+  <span class="s">"transcript"</span>: <span class="s">"[Associate] ... [Customer] ... [Associate] ..."</span>,
+  <span class="s">"rubric"</span>: { <span class="c">/* as above */</span> }
+}
+
+<span class="c">// required output shape, one entry per rubric item</span>
+{
+  <span class="s">"item_scores"</span>: [
+    {
+      <span class="s">"label"</span>: <span class="s">"Needs discovery"</span>,
+      <span class="s">"score"</span>: 0.8,
+      <span class="s">"justification"</span>: <span class="s">"Asked about intended use before recommending a model"</span>,
+      <span class="s">"quote"</span>: <span class="s">"what will you mainly be using the phone for?"</span>
+    }
+  ],
+  <span class="s">"scoreable"</span>: <span class="k">true</span>,
+  <span class="s">"unscoreable_reason"</span>: <span class="k">null</span>
+}</code></pre>
+      <p>
+        <code>unscoreable_reason</code> exists so the model has an explicit way to say "the customer's
+        side is inaudible" or "this conversation is too short to judge" rather than forcing scores onto
+        thin evidence. Output is validated against this schema; a response that fails validation is
+        retried once, then marked unscored — see <a href="architecture.html#failure">failure handling</a>.
+      </p>
+
+      <h2 id="retention"><span class="section-num">12</span>Retention &amp; deletion jobs</h2>
+      <ul>
+        <li><strong>Transcripts:</strong> a scheduled job deletes <code>conversations.transcript</code> content 90 days after creation, per <a href="prd.html#privacy">the PRD's privacy commitments</a>. Aggregate scores are unaffected — they do not reference transcript text.</li>
+        <li><strong>Raw audio:</strong> whether <code>audio_chunks</code> objects are deleted immediately after successful transcription, or retained for some window, is still open — see the <a href="roadmap.html#open">roadmap</a>. The schema supports either without migration: deletion is a storage-layer job, not a schema change.</li>
+        <li><strong>PII stripping:</strong> runs as part of the transcript write, before <code>conversations.transcript</code> is persisted — phone numbers, names, card numbers, addresses are redacted at write time, not after the fact.</li>
+      </ul>
+
+      <div class="pagenav">
+        <a href="architecture.html"><div class="k">Previous</div><div class="v">← System Architecture</div></a>
+        <a href="roadmap.html"><div class="k">Next</div><div class="v">Roadmap &amp; Risks →</div></a>
+      </div>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div><a href="index.html">Overview</a> · <a href="prd.html">PRD</a> · <a href="architecture.html">Architecture</a> · <a href="roadmap.html">Roadmap</a></div>
+  </footer>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

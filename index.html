@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Nobel — Documentation</title>
+<meta name="description" content="Project Nobel: retail sales coaching from real floor conversations. Product and architecture documentation.">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-dot"></span> Project Nobel <small>Docs</small>
+    </a>
+    <nav class="nav">
+      <a href="index.html" class="active">Overview</a>
+      <a href="prd.html">PRD</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="data-model.html">Data &amp; API</a>
+      <a href="roadmap.html">Roadmap</a>
+      <button class="icon-btn" data-theme-toggle type="button">◐</button>
+    </nav>
+  </div>
+  <div class="progress"></div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Internal — Draft v0.1</span>
+    <h1>Coaching retail associates<br>from the conversations they actually have.</h1>
+    <p class="lede">
+      Project Nobel records what happens on the shop floor, turns it into a transcript, scores it
+      against a rubric the retailer defines, and sends the associate a short, specific
+      piece of feedback every day. Managers get a weekly view of who is improving and who needs help.
+    </p>
+
+    <div class="meta-row">
+      <div class="meta-item"><div class="k">Document owner</div><div class="v">Sabari</div></div>
+      <div class="meta-item"><div class="k">Status</div><div class="v">Draft for review</div></div>
+      <div class="meta-item"><div class="k">Last updated</div><div class="v">15 Aug 2026</div></div>
+      <div class="meta-item"><div class="k">Stage</div><div class="v">Pre-pilot</div></div>
+      <div class="meta-item"><div class="k">Contributors</div><div class="v">Yatin, Sujit, Sabari</div></div>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <aside class="toc">
+      <div class="toc-label">On this page</div>
+      <a href="#read">What to read</a>
+      <a href="#problem">The problem</a>
+      <a href="#shape">Shape of the system</a>
+      <a href="#bets">Bets we are making</a>
+      <a href="#numbers">Numbers that matter</a>
+      <a href="#decided">Decided vs. open</a>
+      <a href="#team">Who does what</a>
+    </aside>
+
+    <main>
+
+      <h2 id="read"><span class="section-num">01</span>What to read</h2>
+      <p>Four documents. Read them in order if this is your first pass.</p>
+
+      <div class="tiles">
+        <a class="tile" href="prd.html">
+          <div class="n">01 — Product</div>
+          <div class="t">Product Requirements</div>
+          <div class="d">What we are building and why, in plain language. Who it is for, what happens
+            day to day, what counts as success, and what we are deliberately not doing.</div>
+          <div class="go">Read the PRD →</div>
+        </a>
+        <a class="tile" href="architecture.html">
+          <div class="n">02 — Engineering</div>
+          <div class="t">System Architecture</div>
+          <div class="d">How audio gets from a phone in a store to a feedback message. Components,
+            the recording pipeline, the processing pipeline, failure handling, security.</div>
+          <div class="go">Read the architecture →</div>
+        </a>
+        <a class="tile" href="data-model.html">
+          <div class="n">03 — Engineering</div>
+          <div class="t">Data Model &amp; API</div>
+          <div class="d">Database tables, storage layout, API contracts between app and backend,
+            the rubric format, and the exact prompt structure for scoring.</div>
+          <div class="go">Read the data model →</div>
+        </a>
+        <a class="tile" href="roadmap.html">
+          <div class="n">04 — Planning</div>
+          <div class="t">Roadmap &amp; Risks</div>
+          <div class="d">Phased delivery plan, the open questions that need answers before we
+            commit, honest risk register, and owner-by-owner next steps.</div>
+          <div class="go">Read the roadmap →</div>
+        </a>
+      </div>
+
+      <h2 id="problem"><span class="section-num">02</span>The problem</h2>
+      <p>
+        In e-commerce, every step of a sale is measured. In a physical store, almost none of it is.
+        A retailer knows what was sold and what the footfall was. They do not know what the associate
+        actually said, whether they asked the customer what they needed, whether they knew the product,
+        or whether they even greeted the person who walked in.
+      </p>
+      <p>
+        Today the only tool is a manager standing nearby, or a mystery shopper visiting once a quarter.
+        Both are rare, subjective, and too late to change anything. So coaching in retail is mostly
+        opinion delivered occasionally, and nobody can tell whether it worked.
+      </p>
+
+      <div class="note">
+        <div class="t">The one-line version</div>
+        <p>Retail has no equivalent of a call recording. We are trying to create one, and then make it
+        useful to the person who was on the call.</p>
+      </div>
+
+      <h2 id="shape"><span class="section-num">03</span>Shape of the system</h2>
+      <p>Five moving parts. Everything in these documents is an elaboration of this diagram.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 900 200" role="img" aria-label="Five stage flow: record, upload, transcribe, score, deliver">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+              <path d="M0,0 L7,3.2 L0,6.4" class="d-line" fill="none" stroke-width="1.4"/>
+            </marker>
+          </defs>
+
+          <g>
+            <rect x="8" y="52" width="148" height="86" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="82" y="80" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Record</text>
+            <text x="82" y="100" text-anchor="middle" class="d-dim" font-size="11.5">Phone in the</text>
+            <text x="82" y="115" text-anchor="middle" class="d-dim" font-size="11.5">associate's pocket</text>
+          </g>
+          <line x1="160" y1="95" x2="188" y2="95" class="d-line" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <g>
+            <rect x="192" y="52" width="148" height="86" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="266" y="80" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Upload</text>
+            <text x="266" y="100" text-anchor="middle" class="d-dim" font-size="11.5">Batched, on Wi-Fi,</text>
+            <text x="266" y="115" text-anchor="middle" class="d-dim" font-size="11.5">every ~2 hours</text>
+          </g>
+          <line x1="344" y1="95" x2="372" y2="95" class="d-line" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <g>
+            <rect x="376" y="52" width="148" height="86" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="450" y="80" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Transcribe</text>
+            <text x="450" y="100" text-anchor="middle" class="d-dim" font-size="11.5">Speech to text,</text>
+            <text x="450" y="115" text-anchor="middle" class="d-dim" font-size="11.5">split by speaker</text>
+          </g>
+          <line x1="528" y1="95" x2="556" y2="95" class="d-line" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <g>
+            <rect x="560" y="52" width="148" height="86" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="634" y="80" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Score</text>
+            <text x="634" y="100" text-anchor="middle" class="d-dim" font-size="11.5">LLM against the</text>
+            <text x="634" y="115" text-anchor="middle" class="d-dim" font-size="11.5">retailer's rubric</text>
+          </g>
+          <line x1="712" y1="95" x2="740" y2="95" class="d-line" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <g>
+            <rect x="744" y="52" width="148" height="86" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="818" y="80" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Deliver</text>
+            <text x="818" y="100" text-anchor="middle" class="d-dim" font-size="11.5">Daily nudge, weekly</text>
+            <text x="818" y="115" text-anchor="middle" class="d-dim" font-size="11.5">manager view</text>
+          </g>
+
+          <text x="82" y="165" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">React Native</text>
+          <text x="266" y="165" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">Opus + S3</text>
+          <text x="450" y="165" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">Voicemaker</text>
+          <text x="634" y="165" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">LLM + rubric</text>
+          <text x="818" y="165" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">App / WhatsApp</text>
+        </svg>
+      </div>
+      <p class="caption">End-to-end flow. Nothing is scored on the device; the phone only records and uploads.</p>
+
+      <h2 id="bets"><span class="section-num">04</span>Bets we are making</h2>
+      <p>
+        These are assumptions, not facts. Each one is something the pilot is designed to test.
+        If any of the first three is wrong, the product does not work in its current form.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th style="width:32px">#</th><th>The bet</th><th>If it is wrong</th><th>Confidence</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>A phone mic in a pocket or lanyard picks up the customer clearly enough to transcribe.</td>
+              <td>Whole approach needs external mics. Cost and rollout friction go up sharply.</td>
+              <td><span class="pill p-red">Low</span></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Transcription is accurate enough in mixed Hindi–English retail speech to score fairly.</td>
+              <td>Scores become noise. Associates stop trusting the feedback within a week.</td>
+              <td><span class="pill p-yellow">Medium</span></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Associates will keep the app running rather than quietly killing it.</td>
+              <td>Coverage collapses. We measure only the people who already comply.</td>
+              <td><span class="pill p-yellow">Medium</span></td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>An LLM can apply a retail rubric about as consistently as a decent human manager.</td>
+              <td>Fall back to a much narrower rubric: presence/absence checks only, no quality judgement.</td>
+              <td><span class="pill p-green">High</span></td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Daily specific feedback actually changes behaviour on the floor.</td>
+              <td>Product is a measurement tool, not a coaching tool. Different, smaller business.</td>
+              <td><span class="pill p-yellow">Medium</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <div class="t">Bet 1 is the one to settle first</div>
+        <p>
+          Audio quality gates everything downstream. No amount of model quality fixes a recording where
+          the customer is inaudible. Before writing pipeline code we should spend two days recording real
+          store audio on a phone and listening to it. See
+          <a href="roadmap.html#week0">Week 0 in the roadmap</a>.
+        </p>
+      </div>
+
+      <h2 id="numbers"><span class="section-num">05</span>Numbers that matter</h2>
+      <p>Rough planning figures for a single-store pilot. Derivations are in the architecture document.</p>
+
+      <div class="grid g4">
+        <div class="stat">
+          <div class="num">~11 MB</div>
+          <div class="lbl">Audio per associate per shift</div>
+          <div class="sub">8h · Opus 16 kbps mono</div>
+        </div>
+        <div class="stat">
+          <div class="num">~4</div>
+          <div class="lbl">Uploads per shift</div>
+          <div class="sub">every 2h, Wi-Fi preferred</div>
+        </div>
+        <div class="stat">
+          <div class="num">&lt; 30 min</div>
+          <div class="lbl">Shift end to feedback</div>
+          <div class="sub">target, not guaranteed</div>
+        </div>
+        <div class="stat">
+          <div class="num">15 – 25</div>
+          <div class="lbl">Conversations per associate/day</div>
+          <div class="sub">assumption, to be measured</div>
+        </div>
+      </div>
+
+      <h2 id="decided"><span class="section-num">06</span>Decided vs. open</h2>
+
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-title"><span class="pill p-green">Decided</span></div>
+          <ul class="checklist">
+            <li><strong>React Native</strong> for the app, chosen for development speed, not cross-platform reach.</li>
+            <li><strong>Android only</strong> for Phase 1. iOS's background-recording limits are a harder problem; deferred, not ruled out.</li>
+            <li><strong>Supabase</strong> for backend, auth, database, storage and functions.</li>
+            <li><strong>Voicemaker</strong> for transcription, flagship model.</li>
+            <li><strong>Server-side diarization.</strong> Nothing about speaker separation on the device.</li>
+            <li><strong>No on-device transcription.</strong> Quantized models lose too much accuracy.</li>
+            <li><strong>Hindi and English</strong> for the first deployment.</li>
+            <li><strong>Phone mic only</strong> in Phase 1. External hardware is Phase 2.</li>
+            <li><strong>The retailer writes the rubric.</strong> We supply a starting template, they own it.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="pill p-yellow">Open</span></div>
+          <ul class="crosslist">
+            <li><strong>Do we keep the audio</strong> after transcription, or only the transcript?</li>
+            <li><strong>Continuous vs. triggered recording</strong> — always-on, or associate taps to start?</li>
+            <li><strong>Consent mechanism</strong> for the customer. Signage alone, or something explicit?</li>
+            <li><strong>Feedback channel</strong> — in-app, WhatsApp, or both from day one?</li>
+            <li><strong>Diarization quality</strong> — unproven until Voicemaker multi-channel is live.</li>
+            <li><strong>Dialect accuracy</strong> — Punjabi-accented Hindi is a known gap, untested.</li>
+            <li><strong>Scoring transparency</strong> — does the associate see the transcript behind a score?</li>
+            <li><strong>Battery cost</strong> of an 8-hour recording session, unmeasured.</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>
+        Every open item has an owner and a target date in the
+        <a href="roadmap.html#open">open questions table</a>.
+      </p>
+
+      <h2 id="team"><span class="section-num">07</span>Who does what</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Person</th><th>Owns</th><th>Immediate next step</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Sabari</strong></td>
+              <td>System architecture, mobile app, backend pipeline</td>
+              <td>This document set, then the RN background-recording spike</td>
+            </tr>
+            <tr>
+              <td><strong>Sujit</strong></td>
+              <td>Transcription stack, Voicemaker integration</td>
+              <td>Enable multi-channel diarization; share API docs with Sabari</td>
+            </tr>
+            <tr>
+              <td><strong>Yatin</strong></td>
+              <td>Customer relationship, rubric definition, pilot site</td>
+              <td>Set up the three-way group; get rubric v1 from the retailer</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <div class="t">How to use these docs</div>
+        <p>
+          Nothing here is final. Where a decision is genuinely undecided it says so, rather than
+          picking something to look complete. Argue with the bets in section 04 first — those matter
+          more than any implementation detail.
+        </p>
+      </div>
+
+      <div class="pagenav">
+        <span></span>
+        <a href="prd.html">
+          <div class="k">Next</div>
+          <div class="v">Product Requirements →</div>
+        </a>
+      </div>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div><a href="prd.html">PRD</a> · <a href="architecture.html">Architecture</a> · <a href="data-model.html">Data &amp; API</a> · <a href="roadmap.html">Roadmap</a></div>
+  </footer>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

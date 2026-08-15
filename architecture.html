@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Architecture — Project Nobel</title>
+<meta name="description" content="How audio gets from a phone in a store to a feedback message. Components, pipelines, failure handling, security.">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html"><span class="brand-dot"></span> Project Nobel <small>Docs</small></a>
+    <nav class="nav">
+      <a href="index.html">Overview</a>
+      <a href="prd.html">PRD</a>
+      <a href="architecture.html" class="active">Architecture</a>
+      <a href="data-model.html">Data &amp; API</a>
+      <a href="roadmap.html">Roadmap</a>
+      <button class="icon-btn" data-theme-toggle type="button">◐</button>
+    </nav>
+  </div>
+  <div class="progress"></div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="eyebrow">Document 02 — Engineering</span>
+    <h1>System Architecture</h1>
+    <p class="lede">
+      How audio recorded in a shirt pocket becomes a message an associate reads that evening.
+      Every component, why it exists, and where it is likely to break.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item"><div class="k">Owner</div><div class="v">Sabari</div></div>
+      <div class="meta-item"><div class="k">Version</div><div class="v">0.1 — Draft</div></div>
+      <div class="meta-item"><div class="k">Audience</div><div class="v">Engineering</div></div>
+      <div class="meta-item"><div class="k">Reading time</div><div class="v">~14 minutes</div></div>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <aside class="toc">
+      <div class="toc-label">Contents</div>
+      <a href="#scope">1. What this covers</a>
+      <a href="#glance">2. Components at a glance</a>
+      <a href="#mobile">3. Mobile app &amp; recording</a>
+      <a href="#upload">4. Upload &amp; chunking</a>
+      <a href="#backend">5. Backend on Supabase</a>
+      <a href="#transcribe">6. Transcription &amp; diarization</a>
+      <a href="#segment">7. Conversation segmentation</a>
+      <a href="#score">8. Scoring pipeline</a>
+      <a href="#deliver">9. Feedback delivery</a>
+      <a href="#failure">10. Failure handling</a>
+      <a href="#security">11. Security &amp; data handling</a>
+      <a href="#cost">12. Cost &amp; scale math</a>
+      <a href="#open">13. Open technical questions</a>
+    </aside>
+
+    <main>
+
+      <h2 id="scope"><span class="section-num">01</span>What this covers</h2>
+      <p>
+        The <a href="prd.html">PRD</a> says what we are building and why. This document says how —
+        the actual components, the data flowing between them, and the places most likely to break
+        in a real store rather than in a demo. If you are deciding whether a technical choice is
+        sound, this is the document to argue with.
+      </p>
+      <p>
+        Table and API specifics live in <a href="data-model.html">Data Model &amp; API</a> so this
+        document can stay about shape and reasoning rather than field names.
+      </p>
+
+      <h2 id="glance"><span class="section-num">02</span>Components at a glance</h2>
+      <p>Six pieces. Nothing on the device beyond recording, compressing, and uploading — every judgement happens server-side.</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 960 268" role="img" aria-label="Architecture diagram: mobile app, Supabase storage and edge functions, Voicemaker transcription, segmentation, scoring LLM in a top row; Postgres and delivery in a second row, with dashed lines showing which stages read and write Postgres">
+          <defs>
+            <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+              <path d="M0,0 L7,3.2 L0,6.4" class="d-line" fill="none" stroke-width="1.4"/>
+            </marker>
+          </defs>
+
+          <!-- pipeline row -->
+          <g>
+            <rect x="10" y="20" width="168" height="90" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="94" y="50" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Mobile app</text>
+            <text x="94" y="70" text-anchor="middle" class="d-dim" font-size="11.5">React Native · Android</text>
+            <text x="94" y="86" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">records · compresses</text>
+            <text x="94" y="100" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">uploads Opus chunks</text>
+          </g>
+          <line x1="178" y1="65" x2="198" y2="65" class="d-line d-accent-s" stroke-width="1.6" marker-end="url(#ah2)"/>
+
+          <g>
+            <rect x="198" y="20" width="168" height="90" rx="9" class="d-fill2 d-stroke" stroke-width="1"/>
+            <text x="282" y="50" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Supabase</text>
+            <text x="282" y="70" text-anchor="middle" class="d-dim" font-size="11.5">Storage + Edge Fns</text>
+            <text x="282" y="86" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">auth · object store</text>
+            <text x="282" y="100" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">triggers pipeline</text>
+          </g>
+          <line x1="366" y1="65" x2="386" y2="65" class="d-line d-accent-s" stroke-width="1.6" marker-end="url(#ah2)"/>
+
+          <g>
+            <rect x="386" y="20" width="168" height="90" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="470" y="50" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Voicemaker</text>
+            <text x="470" y="70" text-anchor="middle" class="d-dim" font-size="11.5">Transcription API</text>
+            <text x="470" y="86" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">speech → text</text>
+            <text x="470" y="100" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">speaker diarization</text>
+          </g>
+          <line x1="554" y1="65" x2="574" y2="65" class="d-line d-accent-s" stroke-width="1.6" marker-end="url(#ah2)"/>
+
+          <g>
+            <rect x="574" y="20" width="168" height="90" rx="9" class="d-fill2 d-stroke" stroke-width="1"/>
+            <text x="658" y="50" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Segmentation</text>
+            <text x="658" y="70" text-anchor="middle" class="d-dim" font-size="11.5">Edge function</text>
+            <text x="658" y="86" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">shift audio →</text>
+            <text x="658" y="100" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">conversations</text>
+          </g>
+          <line x1="742" y1="65" x2="762" y2="65" class="d-line d-accent-s" stroke-width="1.6" marker-end="url(#ah2)"/>
+
+          <g>
+            <rect x="762" y="20" width="188" height="90" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+            <text x="856" y="50" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Scoring LLM</text>
+            <text x="856" y="70" text-anchor="middle" class="d-dim" font-size="11.5">Rubric-based grading</text>
+            <text x="856" y="86" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">score + quote</text>
+            <text x="856" y="100" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">+ justification</text>
+          </g>
+
+          <!-- second row: persistence + output -->
+          <rect x="198" y="180" width="544" height="66" rx="9" class="d-fill2 d-stroke" stroke-width="1"/>
+          <text x="470" y="206" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Postgres</text>
+          <text x="470" y="224" text-anchor="middle" class="d-dim" font-size="11.5">Shifts · conversations · rubrics · scores — read and written by every stage above</text>
+          <text x="470" y="240" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">single source of truth</text>
+
+          <line x1="282" y1="110" x2="282" y2="180" class="d-line" stroke-width="1.2" stroke-dasharray="3,4"/>
+          <line x1="658" y1="110" x2="658" y2="180" class="d-line" stroke-width="1.2" stroke-dasharray="3,4"/>
+          <line x1="470" y1="110" x2="470" y2="180" class="d-line" stroke-width="1.2" stroke-dasharray="3,4"/>
+
+          <rect x="762" y="180" width="188" height="66" rx="9" class="d-fill d-stroke" stroke-width="1"/>
+          <text x="856" y="206" text-anchor="middle" class="d-text" font-size="14" font-weight="620">Delivery</text>
+          <text x="856" y="224" text-anchor="middle" class="d-dim" font-size="11.5">App / WhatsApp</text>
+          <text x="856" y="240" text-anchor="middle" class="d-faint" font-size="10.5" font-family="ui-monospace,monospace">daily nudge · weekly view</text>
+          <line x1="856" y1="110" x2="856" y2="180" class="d-line d-accent-s" stroke-width="1.6" marker-end="url(#ah2)"/>
+
+          <text x="94" y="262" text-anchor="middle" class="d-faint" font-size="10.5">Device</text>
+          <text x="470" y="262" text-anchor="middle" class="d-faint" font-size="10.5">Backend · third party</text>
+          <text x="856" y="262" text-anchor="middle" class="d-faint" font-size="10.5">Output</text>
+        </svg>
+      </div>
+      <p class="caption">
+        Solid arrows are data moving forward through the pipeline. Dashed lines mean that stage reads
+        from or writes to Postgres, which underlies everything but drives nothing directly — it is
+        the record of truth, not a processing step.
+      </p>
+
+      <h2 id="mobile"><span class="section-num">03</span>Mobile app &amp; recording</h2>
+      <p>
+        The single hardest requirement in the whole system lives here: recording audio continuously
+        for an entire shift, while the phone is locked, in a pocket, doing nothing else the associate
+        would notice.
+      </p>
+
+      <h3>Why React Native, and Android only</h3>
+      <p>
+        Two separate decisions worth keeping distinct. <strong>React Native</strong> was chosen for
+        development speed — it is the framework we can iterate fastest in for a pilot, not a choice
+        made to get iOS and Android from one codebase. <strong>Android is the only target for Phase 1.</strong>
+        iOS's stricter limits on continuous background audio — session suspension under memory
+        pressure, tighter background-execution budgets — make an 8-hour always-recording session a
+        much harder and less predictable problem there than on Android. Rather than split effort
+        solving that on both platforms at once, Phase 1 ships Android only. iOS is deferred, not
+        ruled out; the same React Native codebase can extend to it later once the recording model
+        is proven.
+      </p>
+
+      <h3>Recording behaviour</h3>
+      <ul>
+        <li><strong>Start/end shift</strong> is an explicit associate action, not automatic. Recording only happens between these two taps.</li>
+        <li><strong>Format:</strong> Opus at 16 kbps mono. Speech-optimized, roughly 11 MB for an 8-hour shift — see <a href="#cost">cost math</a>.</li>
+        <li><strong>Persistent notification</strong> while recording, required by Android's foreground service model for continuous audio capture, and useful for trust regardless — the associate always knows the state.</li>
+        <li><strong>Pause is always available,</strong> with no justification required, and pausing is never itself logged as a signal against the associate — see <a href="prd.html#privacy">recording people</a>.</li>
+        <li><strong>Local buffer first.</strong> Audio is written to local storage in rolling segments before upload, so a dead network never loses a segment, only delays it.</li>
+      </ul>
+
+      <div class="note warn">
+        <div class="t">Needs verification, not assumed</div>
+        <p>
+          Android's own background-execution story is not free of risk: aggressive OEM battery
+          managers (Xiaomi, Oppo, and similar) kill background services well before stock Android
+          would, and a foreground service with a notification does not fully protect against it in
+          practice. We have not yet run an 8-hour on-body test across a spread of Android OEMs.
+          Needs a real device spike before we commit further engineering — see
+          <a href="roadmap.html#week0">Week 0</a>.
+        </p>
+      </div>
+
+      <h2 id="upload"><span class="section-num">04</span>Upload &amp; chunking</h2>
+      <p>
+        The app does not hold eight hours of audio and upload it all at shift end. It uploads in
+        chunks roughly every two hours, for three reasons: it caps how much is lost if the app
+        crashes or the phone dies, it keeps individual uploads small enough to survive patchy store
+        Wi-Fi, and it lets transcription start before the shift is even over.
+      </p>
+      <ul>
+        <li><strong>Trigger:</strong> time-based (every ~2h) and opportunistic (on reaching known store Wi-Fi), not continuous streaming.</li>
+        <li><strong>Payload:</strong> a single chunk is roughly 2-3 MB Opus, far under Voicemaker's ~100 MB per-request limit, leaving headroom rather than sitting near the ceiling.</li>
+        <li><strong>Retry:</strong> exponential backoff, resumable — a failed chunk is retried on the next window, not abandoned.</li>
+        <li><strong>Ordering:</strong> chunks carry a sequence number and shift ID so segmentation (<a href="#segment">section 7</a>) can reconstruct a continuous timeline even if chunks arrive out of order.</li>
+      </ul>
+      <p>The polling interval is tunable per deployment — tighter for faster feedback, looser to save battery. Start conservative; tighten once we have real battery data.</p>
+
+      <h2 id="backend"><span class="section-num">05</span>Backend on Supabase</h2>
+      <p>
+        Supabase gives us Postgres, auth, object storage, and serverless functions in one place,
+        which matters for a three-person team trying to reach a pilot quickly rather than run
+        infrastructure. Nothing here is exotic enough to justify assembling the equivalent ourselves.
+      </p>
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-title">What Supabase does for us</div>
+          <ul>
+            <li>Auth for associates and managers, with row-level security scoping every query to a store</li>
+            <li>Object storage for raw audio chunks and, if we keep it, transcript text</li>
+            <li>Postgres as the single source of truth for shifts, conversations, rubrics, and scores</li>
+            <li>Edge functions as the glue: triggered on upload, they call Voicemaker, then segmentation, then the scoring LLM</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">What we are watching</div>
+          <ul>
+            <li>Edge function cold starts and timeout limits under a full processing chain — may need to split into a queue rather than one long function</li>
+            <li>Storage egress cost if audio retention turns out to be long — see <a href="prd.html#privacy">retention decision</a></li>
+            <li>Row-level security policy correctness — a manager must never see another store's data by accident</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="transcribe"><span class="section-num">06</span>Transcription &amp; diarization</h2>
+      <p>
+        Each uploaded chunk goes to Voicemaker's flagship model. Two things matter more than raw
+        accuracy: telling associate from customer, and handling code-mixed Hindi-English speech,
+        which is the normal register of retail conversation in most Indian cities.
+      </p>
+      <ul>
+        <li><strong>Diarization is not yet enabled</strong> on Voicemaker's side for multi-channel input — Sujit is enabling it. Until then, transcripts have text but not a reliable speaker label, which blocks most of the rubric.</li>
+        <li><strong>Language:</strong> Hindi and English for the first deployment. Dialectal variation — Punjabi-accented Hindi is the flagged example — is an accuracy gap we have not measured yet.</li>
+        <li><strong>Real-time is not available.</strong> Transcription happens after a chunk is fully uploaded, which is consistent with feedback being end-of-shift rather than live, and matches the product decision to never coach mid-conversation.</li>
+        <li><strong>No on-device transcription.</strong> We tested the idea; quantized on-device models lose enough accuracy on this kind of speech that transcripts became unreliable, and mobile compute budget was tight regardless. Ruled out for now, not forever.</li>
+      </ul>
+
+      <h2 id="segment"><span class="section-num">07</span>Conversation segmentation</h2>
+      <p>
+        A shift transcript is a wall of text spanning eight hours. Segmentation cuts it into
+        individual customer conversations — the unit the rubric actually scores.
+      </p>
+      <ul>
+        <li><strong>Signal:</strong> silence gaps above a threshold, diarization turn-taking patterns, and a minimum-length filter to discard stray small talk between colleagues.</li>
+        <li><strong>Failure modes to design against:</strong> merging two customers into one scored conversation (dilutes and confuses the rubric), or splitting one customer into two (scores an incomplete interaction as if it were complete).</li>
+        <li><strong>Output:</strong> a list of conversation records, each with a start/end timestamp into the shift audio and a diarized transcript, ready for scoring.</li>
+      </ul>
+      <p>This stage is the one most dependent on diarization quality — see the <a href="roadmap.html#open">open questions table</a> for where that stands.</p>
+
+      <h2 id="score"><span class="section-num">08</span>Scoring pipeline</h2>
+      <p>
+        Each segmented conversation is sent to an LLM along with the store's rubric. The model
+        returns a score per rubric item, a short justification, and a supporting quote from the
+        transcript — never a bare number. The exact prompt structure and output schema are in
+        <a href="data-model.html#prompt">Data Model &amp; API</a>.
+      </p>
+      <ul>
+        <li>Scoring is asynchronous and can happen as soon as a conversation is segmented — it does not wait for the whole shift to end.</li>
+        <li>A conversation with too little audio, or where the customer's side is inaudible, should be flagged as unscoreable rather than forced through the rubric. A confident-looking wrong score is worse than an honest gap.</li>
+        <li>Per-associate daily scores are an aggregate of the day's scoreable conversations, computed after the last one lands.</li>
+      </ul>
+
+      <h2 id="deliver"><span class="section-num">09</span>Feedback delivery</h2>
+      <p>
+        Once the daily aggregate and message are generated, delivery goes through the app and,
+        pending WhatsApp Business API template approval, WhatsApp — see
+        <a href="prd.html#feedback">the feedback rules in the PRD</a> for tone and content constraints.
+        Manager dashboards are a weekly pull, computed from the same underlying scores, not a
+        separate pipeline.
+      </p>
+
+      <h2 id="failure"><span class="section-num">10</span>Failure handling</h2>
+      <p>The system will fail in ordinary ways constantly — dropped uploads, a third-party API timeout, a phone dying at 40% battery. None of these should be surprising in production.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Failure</th><th>Behaviour</th></tr></thead>
+          <tbody>
+            <tr><td>Chunk upload fails</td><td>Stays in local buffer, retried with backoff on the next window. Nothing is deleted from device until upload is confirmed.</td></tr>
+            <tr><td>Voicemaker request times out or errors</td><td>Requeued with backoff; after N failures, the chunk is marked failed and surfaced in an internal ops view rather than silently dropped.</td></tr>
+            <tr><td>Segmentation finds no clear boundaries</td><td>Falls back to treating the whole chunk as one long conversation rather than discarding it, flagged as low-confidence.</td></tr>
+            <tr><td>Scoring LLM output fails schema validation</td><td>One retry with the same input; if it fails again, the conversation is marked unscored, not silently zeroed.</td></tr>
+            <tr><td>Associate ends shift mid-upload</td><td>Any buffered chunk still uploads; end-of-shift does not cancel in-flight work.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="security"><span class="section-num">11</span>Security &amp; data handling</h2>
+      <ul>
+        <li><strong>Row-level security</strong> in Postgres scopes every query to the associate's own data or the manager's own store — enforced at the database layer, not just in application code.</li>
+        <li><strong>Audio in transit and at rest</strong> is encrypted (TLS for upload, storage-provider encryption at rest).</li>
+        <li><strong>PII stripping</strong> runs on transcripts before long-term storage — phone numbers, names, card numbers, addresses — per <a href="prd.html#privacy">the PRD's privacy commitments</a>.</li>
+        <li><strong>Retention:</strong> transcripts deleted after 90 days by a scheduled job; whether raw audio is kept at all is still an open decision — see <a href="roadmap.html#open">open questions</a>.</li>
+        <li><strong>Access:</strong> nobody browses raw recordings by default. Playback is gated behind an explicit dispute-review flow, logged when used.</li>
+      </ul>
+
+      <h2 id="cost"><span class="section-num">12</span>Cost &amp; scale math</h2>
+      <p>Rough numbers for a single-store pilot, to sanity-check before committing to infrastructure choices.</p>
+      <div class="grid g4">
+        <div class="stat"><div class="num">~11 MB</div><div class="lbl">Audio per associate per shift</div><div class="sub">8h · Opus 16 kbps mono</div></div>
+        <div class="stat"><div class="num">~1.1 GB</div><div class="lbl">Audio per 100 associate-shifts</div><div class="sub">roughly one store-week</div></div>
+        <div class="stat"><div class="num">15–25</div><div class="lbl">Scoring calls per associate/day</div><div class="sub">one per conversation</div></div>
+        <div class="stat"><div class="num">~100 MB</div><div class="lbl">Voicemaker payload ceiling</div><div class="sub">our chunks sit at ~2-3% of it</div></div>
+      </div>
+      <p>
+        At single-store pilot scale, none of storage, transcription, or LLM cost is the constraint —
+        engineering time is. Revisit this section seriously once a rollout spans dozens of stores,
+        where transcription and LLM scoring cost per conversation becomes the dominant line item.
+      </p>
+
+      <h2 id="open"><span class="section-num">13</span>Open technical questions</h2>
+      <p>Full list with owners and target dates lives in the <a href="roadmap.html#open">roadmap's open questions table</a>. The ones with the largest architectural blast radius:</p>
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-title"><span class="pill p-red">Blocking</span></div>
+          <ul class="crosslist">
+            <li>Multi-channel diarization is not live yet — segmentation and scoring both depend on it.</li>
+            <li>Audio quality from a pocketed phone mic is unproven — see <a href="roadmap.html#week0">Week 0</a>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="pill p-yellow">Design-affecting</span></div>
+          <ul class="crosslist">
+            <li>Continuous vs. triggered recording changes the upload and battery model.</li>
+            <li>Audio retention decision changes storage cost and the security surface materially.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pagenav">
+        <a href="prd.html"><div class="k">Previous</div><div class="v">← Product Requirements</div></a>
+        <a href="data-model.html"><div class="k">Next</div><div class="v">Data Model &amp; API →</div></a>
+      </div>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div><a href="index.html">Overview</a> · <a href="prd.html">PRD</a> · <a href="data-model.html">Data &amp; API</a> · <a href="roadmap.html">Roadmap</a></div>
+  </footer>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
