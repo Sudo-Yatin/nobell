@@ -37,6 +37,7 @@
       <div class="meta-item"><div class="k">Owner</div><div class="v">Sabari</div></div>
       <div class="meta-item"><div class="k">Version</div><div class="v">0.1 — Draft</div></div>
       <div class="meta-item"><div class="k">Audience</div><div class="v">Whole team + customer</div></div>
+      <div class="meta-item"><div class="k">Last updated</div><div class="v">16 Aug 2026</div></div>
       <div class="meta-item"><div class="k">Reading time</div><div class="v">~11 minutes</div></div>
     </div>
   </section>
@@ -134,8 +135,8 @@
 
       <h2 id="timeline"><span class="section-num">05</span>Timeline at a glance</h2>
       <div class="timeline">
-        <div class="tl-item done">
-          <div class="tl-when">Week 0</div>
+        <div class="tl-item">
+          <div class="tl-when">Week 0 — not started</div>
           <div class="tl-what">Audio quality spike</div>
           <p>Real-world recording test, background-recording survival check on Android.</p>
         </div>
@@ -165,12 +166,21 @@
           <p>Real associates, real store, watched closely against the exit criteria above.</p>
         </div>
       </div>
-      <p class="caption">Indicative, not committed. Every phase after Week 0 assumes diarization lands and audio quality holds — see open questions below.</p>
+      <p class="caption">Indicative, not committed. Week numbers are relative to a start date nobody has set yet, and no phase has begun. Every phase after Week 0 assumes diarization lands and audio quality holds — see open questions below.</p>
+
+      <div class="note warn">
+        <div class="t">Nothing here has started</div>
+        <p>
+          As of 16 August 2026 no phase on this timeline is underway. The week numbers are durations,
+          not dates — they only become a schedule once Week 0 gets a real start date. Treat the whole
+          sequence as an estimate of effort, not a commitment anyone has made to the customer.
+        </p>
+      </div>
 
       <h2 id="open"><span class="section-num">06</span>Open questions</h2>
       <p>Referenced from the <a href="index.html#decided">overview</a> and the <a href="prd.html#notdoing">PRD</a>. Every item needs an owner and a target date before Phase 1 can be called complete.</p>
       <div class="table-wrap">
-        <table>
+        <table data-sortable>
           <thead><tr><th>Question</th><th>Owner</th><th>Target</th></tr></thead>
           <tbody>
             <tr><td>Do we keep audio after transcription, or only the transcript?</td><td>Sabari</td><td>Before Phase 1 build starts</td></tr>
@@ -181,6 +191,8 @@
             <tr><td>Dialect accuracy — Punjabi-accented Hindi is a known gap, untested</td><td>Sujit</td><td>During Weeks 2–3</td></tr>
             <tr><td>Scoring transparency — does the associate see the transcript behind a score?</td><td>Sabari + Yatin</td><td>Weeks 3–4</td></tr>
             <tr><td>Battery cost of an 8-hour recording session, unmeasured</td><td>Sabari</td><td>End of Week 0</td></tr>
+            <tr><td>Transcript deletion vs. disputes — a dispute argued from a transcript that has already been deleted</td><td>Sabari</td><td>With the retention decision</td></tr>
+            <tr><td>Golden set for scoring — how many conversations get hand-labelled, by whom, to measure score agreement</td><td>Sabari + Yatin</td><td>Before Weeks 3–4</td></tr>
             <tr><td>Legal review of DPDP position ahead of the second customer</td><td>Yatin</td><td>Before Phase 2 commitment</td></tr>
           </tbody>
         </table>
@@ -189,7 +201,7 @@
       <h2 id="risks"><span class="section-num">07</span>Risk register</h2>
       <p>Stated plainly, matching the <a href="prd.html#fail">failure modes in the PRD</a> but framed for tracking rather than narrative.</p>
       <div class="table-wrap">
-        <table>
+        <table data-sortable>
           <thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
           <tbody>
             <tr><td>Phone mic can't reliably capture the customer</td><td><span class="pill p-red">Low confidence it works</span></td><td>Critical</td><td>Week 0 spike; fallback to lanyard placement or external mic</td></tr>
@@ -244,11 +256,12 @@
   </div>
 
   <footer class="footer">
-    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div>Project Nobel · Internal draft · Not for external distribution<br><a href="https://github.com/Sudo-Yatin/nobell/issues/new" rel="noopener">Suggest a change or flag an error →</a></div>
     <div><a href="index.html">Overview</a> · <a href="prd.html">PRD</a> · <a href="architecture.html">Architecture</a> · <a href="data-model.html">Data &amp; API</a></div>
   </footer>
 </div>
 
+<script src="assets/search-index.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

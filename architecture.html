@@ -37,6 +37,7 @@
       <div class="meta-item"><div class="k">Owner</div><div class="v">Sabari</div></div>
       <div class="meta-item"><div class="k">Version</div><div class="v">0.1 — Draft</div></div>
       <div class="meta-item"><div class="k">Audience</div><div class="v">Engineering</div></div>
+      <div class="meta-item"><div class="k">Last updated</div><div class="v">16 Aug 2026</div></div>
       <div class="meta-item"><div class="k">Reading time</div><div class="v">~14 minutes</div></div>
     </div>
   </section>
@@ -249,8 +250,19 @@
         <li><strong>Diarization is not yet enabled</strong> on Voicemaker's side for multi-channel input — Sujit is enabling it. Until then, transcripts have text but not a reliable speaker label, which blocks most of the rubric.</li>
         <li><strong>Language:</strong> Hindi and English for the first deployment. Dialectal variation — Punjabi-accented Hindi is the flagged example — is an accuracy gap we have not measured yet.</li>
         <li><strong>Real-time is not available.</strong> Transcription happens after a chunk is fully uploaded, which is consistent with feedback being end-of-shift rather than live, and matches the product decision to never coach mid-conversation.</li>
-        <li><strong>No on-device transcription.</strong> We tested the idea; quantized on-device models lose enough accuracy on this kind of speech that transcripts became unreliable, and mobile compute budget was tight regardless. Ruled out for now, not forever.</li>
+        <li><strong>No on-device transcription.</strong> Ruled out on the expectation that quantized on-device models would lose too much accuracy on this kind of speech, and that mobile compute budget is tight regardless. This was a judgement call, not a measured result — nobody has benchmarked it. Ruled out for now, not forever.</li>
       </ul>
+
+      <div class="note warn">
+        <div class="t">Everything about Voicemaker here is unverified</div>
+        <p>
+          The API documentation has not been shared with engineering yet — it is still an open action
+          on Sujit. The payload ceiling, the "flagship model" designation, the absence of real-time,
+          and the diarization behaviour described in this document all come from a verbal summary in
+          one meeting, not from docs anyone has read. Confirm the vendor's speech-to-text capability
+          and limits before building against them; do not quote these figures to the customer.
+        </p>
+      </div>
 
       <h2 id="segment"><span class="section-num">07</span>Conversation segmentation</h2>
       <p>
@@ -311,11 +323,20 @@
       </ul>
 
       <h2 id="cost"><span class="section-num">12</span>Cost &amp; scale math</h2>
+
+      <div class="note warn">
+        <div class="t">Figures marked &dagger; are placeholders</div>
+        <p>
+          They were drafted to make the shape of the problem concrete, not derived from measurement
+          or agreed with the customer. Nothing marked &dagger; should be quoted externally or planned
+          against until it has been checked. Hover any marker to see this note again.
+        </p>
+      </div>
       <p>Rough numbers for a single-store pilot, to sanity-check before committing to infrastructure choices.</p>
       <div class="grid g4">
-        <div class="stat"><div class="num">~11 MB</div><div class="lbl">Audio per associate per shift</div><div class="sub">8h · Opus 16 kbps mono</div></div>
-        <div class="stat"><div class="num">~1.1 GB</div><div class="lbl">Audio per 100 associate-shifts</div><div class="sub">roughly one store-week</div></div>
-        <div class="stat"><div class="num">15–25</div><div class="lbl">Scoring calls per associate/day</div><div class="sub">one per conversation</div></div>
+        <div class="stat"><div class="num">~11 MB<span class="est">&dagger;</span></div><div class="lbl">Audio per associate per shift</div><div class="sub">8h · Opus 16 kbps mono</div></div>
+        <div class="stat"><div class="num">~1.1 GB<span class="est">&dagger;</span></div><div class="lbl">Audio per 100 associate-shifts</div><div class="sub">roughly one store-week</div></div>
+        <div class="stat"><div class="num">15–25<span class="est">&dagger;</span></div><div class="lbl">Scoring calls per associate/day</div><div class="sub">one per conversation</div></div>
         <div class="stat"><div class="num">~100 MB</div><div class="lbl">Voicemaker payload ceiling</div><div class="sub">our chunks sit at ~2-3% of it</div></div>
       </div>
       <p>
@@ -352,11 +373,12 @@
   </div>
 
   <footer class="footer">
-    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div>Project Nobel · Internal draft · Not for external distribution<br><a href="https://github.com/Sudo-Yatin/nobell/issues/new" rel="noopener">Suggest a change or flag an error →</a></div>
     <div><a href="index.html">Overview</a> · <a href="prd.html">PRD</a> · <a href="data-model.html">Data &amp; API</a> · <a href="roadmap.html">Roadmap</a></div>
   </footer>
 </div>
 
+<script src="assets/search-index.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

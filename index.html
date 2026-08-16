@@ -232,24 +232,33 @@
       <h2 id="numbers"><span class="section-num">05</span>Numbers that matter</h2>
       <p>Rough planning figures for a single-store pilot. Derivations are in the architecture document.</p>
 
+      <div class="note warn">
+        <div class="t">Figures marked &dagger; are placeholders</div>
+        <p>
+          They were drafted to make the shape of the problem concrete, not derived from measurement
+          or agreed with the customer. Nothing marked &dagger; should be quoted externally or planned
+          against until it has been checked. Hover any marker to see this note again.
+        </p>
+      </div>
+
       <div class="grid g4">
         <div class="stat">
-          <div class="num">~11 MB</div>
+          <div class="num">~11 MB<span class="est">&dagger;</span></div>
           <div class="lbl">Audio per associate per shift</div>
           <div class="sub">8h · Opus 16 kbps mono</div>
         </div>
         <div class="stat">
-          <div class="num">~4</div>
+          <div class="num">~4<span class="est">&dagger;</span></div>
           <div class="lbl">Uploads per shift</div>
           <div class="sub">every 2h, Wi-Fi preferred</div>
         </div>
         <div class="stat">
-          <div class="num">&lt; 30 min</div>
+          <div class="num">&lt; 30 min<span class="est">&dagger;</span></div>
           <div class="lbl">Shift end to feedback</div>
           <div class="sub">target, not guaranteed</div>
         </div>
         <div class="stat">
-          <div class="num">15 – 25</div>
+          <div class="num">15 – 25<span class="est">&dagger;</span></div>
           <div class="lbl">Conversations per associate/day</div>
           <div class="sub">assumption, to be measured</div>
         </div>
@@ -340,11 +349,12 @@
   </div>
 
   <footer class="footer">
-    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div>Project Nobel · Internal draft · Not for external distribution<br><a href="https://github.com/Sudo-Yatin/nobell/issues/new" rel="noopener">Suggest a change or flag an error →</a></div>
     <div><a href="prd.html">PRD</a> · <a href="architecture.html">Architecture</a> · <a href="data-model.html">Data &amp; API</a> · <a href="roadmap.html">Roadmap</a></div>
   </footer>
 </div>
 
+<script src="assets/search-index.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

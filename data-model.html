@@ -37,6 +37,7 @@
       <div class="meta-item"><div class="k">Owner</div><div class="v">Sabari</div></div>
       <div class="meta-item"><div class="k">Version</div><div class="v">0.1 — Draft</div></div>
       <div class="meta-item"><div class="k">Audience</div><div class="v">Engineering</div></div>
+      <div class="meta-item"><div class="k">Last updated</div><div class="v">16 Aug 2026</div></div>
       <div class="meta-item"><div class="k">Reading time</div><div class="v">~13 minutes</div></div>
     </div>
   </section>
@@ -71,7 +72,7 @@
       </p>
 
       <h2 id="overview"><span class="section-num">02</span>Entity overview</h2>
-      <p>Ten entities cover the whole system. Everything else is a join or a derived view.</p>
+      <p>Twelve entities cover the whole system. Everything else is a join or a derived view.</p>
 
       <div class="diagram">
         <svg viewBox="0 0 900 210" role="img" aria-label="Entity relationship overview: retailer, store, associate, shift, audio chunk, conversation, rubric, rubric item, score, feedback message">
@@ -179,7 +180,9 @@
         <dt>id</dt><dd>uuid, primary key</dd>
         <dt>associate_id</dt><dd>fk → associates</dd>
         <dt>started_at, ended_at</dt><dd>timestamp — ended_at null while shift is in progress</dd>
-        <dt>device_battery_at_end</dt><dd>int, nullable — for the battery-cost question in the roadmap</dd>
+        <dt>device_battery_at_start</dt><dd>int, nullable — without this the end reading answers nothing</dd>
+        <dt>device_battery_at_end</dt><dd>int, nullable — the pair gives drain per shift, the open question in the roadmap</dd>
+        <dt>device_model, os_version</dt><dd>text — OEM battery managers differ enough that drain and kill behaviour are only interpretable per device</dd>
       </div>
 
       <h3><code>audio_chunks</code></h3>
@@ -190,7 +193,9 @@
         <dt>sequence_no</dt><dd>int — orders chunks within a shift, independent of upload arrival order</dd>
         <dt>storage_path</dt><dd>text — see <a href="#storage">storage layout</a></dd>
         <dt>duration_seconds</dt><dd>int</dd>
+        <dt>recorded_at, uploaded_at</dt><dd>timestamp — the gap between them is the upload lag we care about operationally</dd>
         <dt>transcription_status</dt><dd>enum: pending, processing, done, failed</dd>
+        <dt>attempt_count</dt><dd>int — retries before a chunk is marked failed, per <a href="architecture.html#failure">failure handling</a></dd>
       </div>
 
       <h3><code>conversations</code></h3>
@@ -232,6 +237,18 @@
         <dt>score</dt><dd>numeric, 0–1</dd>
         <dt>justification</dt><dd>text</dd>
         <dt>supporting_quote</dt><dd>text — verbatim from the transcript, never optional</dd>
+        <dt>scored_at</dt><dd>timestamp</dd>
+        <dt>model_id, prompt_version</dt><dd>text — <strong>required.</strong> Without them, a score change after a prompt edit is indistinguishable from a behaviour change, and "agreement with a human manager" stops being measurable across time</dd>
+      </div>
+
+      <div class="note">
+        <div class="t">Why the model and prompt version are not optional</div>
+        <p>
+          Score-agreement with a human manager is one of the pilot's exit criteria. The moment
+          somebody tunes the scoring prompt, every historical score becomes incomparable unless it
+          records what produced it. Store these from the first scored conversation, not once it
+          becomes a problem.
+        </p>
       </div>
 
       <h3><code>daily_feedback</code></h3>
@@ -242,6 +259,36 @@
         <dt>message_text</dt><dd>text — under 80 words, per <a href="prd.html#feedback">the feedback rules</a></dd>
         <dt>delivered_via</dt><dd>enum: app, whatsapp, both</dd>
         <dt>opened_at</dt><dd>timestamp, nullable — feeds the "does anyone read it" metric in the PRD</dd>
+      </div>
+
+      <h3><code>disputes</code></h3>
+      <p>
+        The PRD promises an associate can challenge a score, and the success metrics count disputes
+        as a fairness signal. Neither works without somewhere to record them.
+      </p>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>conversation_id</dt><dd>fk → conversations</dd>
+        <dt>associate_id</dt><dd>fk → associates — who raised it</dd>
+        <dt>rubric_item_id</dt><dd>fk → rubric_items, nullable — which score is contested, or null for the whole conversation</dd>
+        <dt>reason</dt><dd>text — the associate's own words</dd>
+        <dt>status</dt><dd>enum: open, upheld, rejected, withdrawn</dd>
+        <dt>resolved_by</dt><dd>fk → managers, nullable</dd>
+        <dt>raised_at, resolved_at</dt><dd>timestamp</dd>
+      </div>
+
+      <h3><code>access_log</code></h3>
+      <p>
+        Security says raw transcript playback is "logged when used". This is that log. Without it the
+        commitment is unenforceable and unauditable.
+      </p>
+      <div class="kv">
+        <dt>id</dt><dd>uuid, primary key</dd>
+        <dt>actor_id</dt><dd>uuid — the manager or admin who looked</dd>
+        <dt>conversation_id</dt><dd>fk → conversations</dd>
+        <dt>action</dt><dd>enum: viewed_transcript, played_audio, exported</dd>
+        <dt>dispute_id</dt><dd>fk → disputes, nullable — the justification for access, where one exists</dd>
+        <dt>occurred_at</dt><dd>timestamp</dd>
       </div>
 
       <h2 id="storage"><span class="section-num">07</span>Storage layout</h2>
@@ -332,6 +379,18 @@ retailers/{retailer_id}/stores/{store_id}/conversations/{conversation_id}/transc
         <li><strong>PII stripping:</strong> runs as part of the transcript write, before <code>conversations.transcript</code> is persisted — phone numbers, names, card numbers, addresses are redacted at write time, not after the fact.</li>
       </ul>
 
+      <div class="note warn">
+        <div class="t">Unresolved: deletion versus disputes</div>
+        <p>
+          Transcripts delete at 90 days, but a dispute is argued <em>from</em> the transcript. A
+          dispute raised at day 88 and reviewed at day 92 has nothing left to review. Two plausible
+          fixes — freeze deletion while a dispute is open, or shorten the window in which a dispute
+          can be raised — and we have not picked one. Whoever settles the
+          <a href="roadmap.html#open">audio retention question</a> should settle this at the same time,
+          because they are the same decision.
+        </p>
+      </div>
+
       <div class="pagenav">
         <a href="architecture.html"><div class="k">Previous</div><div class="v">← System Architecture</div></a>
         <a href="roadmap.html"><div class="k">Next</div><div class="v">Roadmap &amp; Risks →</div></a>
@@ -341,11 +400,12 @@ retailers/{retailer_id}/stores/{store_id}/conversations/{conversation_id}/transc
   </div>
 
   <footer class="footer">
-    <div>Project Nobel · Internal draft · Not for external distribution</div>
+    <div>Project Nobel · Internal draft · Not for external distribution<br><a href="https://github.com/Sudo-Yatin/nobell/issues/new" rel="noopener">Suggest a change or flag an error →</a></div>
     <div><a href="index.html">Overview</a> · <a href="prd.html">PRD</a> · <a href="architecture.html">Architecture</a> · <a href="roadmap.html">Roadmap</a></div>
   </footer>
 </div>
 
+<script src="assets/search-index.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
