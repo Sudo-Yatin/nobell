@@ -1,6 +1,7 @@
 /* Project Nobel — shared page behaviour.
-   No dependencies, no build step. Interaction patterns ported from
-   interior.dev (React/motion) to vanilla JS, keeping their timings:
+   Vanilla port of interior.dev components and docs shell.
+   Design tokens and materials from interior globals.css / DESIGN.md.
+   Interaction timings match shipped interior components:
      enter easing  cubic-bezier(.23, 1, .32, 1)
      exit easing   cubic-bezier(.4, 0, 1, 1)
      tooltip       200ms open · 120ms close · 400ms warm window
@@ -26,68 +27,88 @@
 
   /* ================= theme ================= */
 
-  var KEY = "nobel-theme";
+  var KEY = "interior-theme";
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) {}
-  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  if (saved === "light") document.documentElement.classList.remove("dark");
+  else if (saved === "dark") document.documentElement.classList.add("dark");
 
-  function currentTheme() {
-    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  function isDark() {
+    return document.documentElement.classList.contains("dark");
   }
 
-  function toggleTheme() {
-    var next = currentTheme() === "light" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem(KEY, next); } catch (e) {}
-    paintThemeButtons(next);
+  function setTheme(dark) {
+    document.documentElement.classList.toggle("dark", dark);
+    try { localStorage.setItem(KEY, dark ? "dark" : "light"); } catch (e) {}
+    paintThemeButtons(dark);
   }
 
-  function paintThemeButtons(mode) {
-    $$("[data-theme-toggle]").forEach(function (b) {
-      b.textContent = mode === "light" ? "◑" : "◐";
-      b.setAttribute("aria-label", "Switch to " + (mode === "light" ? "dark" : "light") + " theme");
-    });
+  function paintThemeButtons(dark) {
+    var light = $("[data-theme-light]");
+    var darkBtn = $("[data-theme-dark]");
+    if (light) light.setAttribute("aria-pressed", String(!dark));
+    if (darkBtn) darkBtn.setAttribute("aria-pressed", String(dark));
   }
 
   /* ================= scroll: progress, spy, hide-on-scroll ================= */
 
+  function scrollRoot() {
+    return $("#doc-scroll") || document.documentElement;
+  }
+
   function initScroll() {
     var bar = $(".progress");
-    var topbar = $(".topbar");
+    var header = $(".doc-header");
+    var scroller = scrollRoot();
     var links = $$(".toc a[href^='#']");
     var targets = links.map(function (a) {
       var t = document.getElementById(a.getAttribute("href").slice(1));
       return t ? { link: a, el: t } : null;
     }).filter(Boolean);
 
-    var lastY = window.scrollY;
+    var lastY = scroller.scrollTop || window.scrollY;
     var ticking = false;
+
+    function scrollY() {
+      return scroller === document.documentElement ? window.scrollY : scroller.scrollTop;
+    }
+
+    function scrollHeight() {
+      return scroller === document.documentElement
+        ? document.documentElement.scrollHeight
+        : scroller.scrollHeight;
+    }
+
+    function clientHeight() {
+      return scroller === document.documentElement
+        ? window.innerHeight
+        : scroller.clientHeight;
+    }
 
     function update() {
       ticking = false;
-      var y = window.scrollY;
+      var y = scrollY();
 
       if (bar) {
-        var h = document.documentElement.scrollHeight - window.innerHeight;
-        var pct = h > 0 ? (y / h) * 100 : 0;
+        var travel = scrollHeight() - clientHeight();
+        var pct = travel > 0 ? (y / travel) * 100 : 0;
         bar.style.width = Math.min(100, Math.max(0, pct)).toFixed(2) + "%";
       }
 
-      /* hide-on-scroll: only past the hero, never while a layer is open */
-      if (topbar && !document.body.hasAttribute("data-layer-open")) {
+      if (header && !document.body.hasAttribute("data-layer-open")) {
         var down = y > lastY;
-        if (y > 220 && down) topbar.setAttribute("data-hidden", "");
-        else topbar.removeAttribute("data-hidden");
+        if (y > 220 && down) header.setAttribute("data-hidden", "");
+        else header.removeAttribute("data-hidden");
       }
       lastY = y;
 
       if (!targets.length) return;
-      var line = y + 130;
+      var spyLine = scroller === document.documentElement ? 130 : scroller.getBoundingClientRect().top + 130;
       var active = targets[0];
       for (var i = 0; i < targets.length; i++) {
-        if (targets[i].el.offsetTop <= line) active = targets[i];
+        if (targets[i].el.getBoundingClientRect().top <= spyLine) active = targets[i];
       }
-      if (window.innerHeight + y >= document.body.offsetHeight - 4) {
+      if (y + clientHeight() >= scrollHeight() - 4) {
         active = targets[targets.length - 1];
       }
       for (var j = 0; j < targets.length; j++) {
@@ -99,7 +120,7 @@
       if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
     }
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    scroller.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     update();
   }
@@ -148,21 +169,12 @@
     };
   }
 
-  /* ================= mobile drawer nav ================= */
-  /* Fixes the real bug: .nav was display:none under 940px with no replacement,
-     leaving no way to move between pages on a phone. */
+  /* ================= mobile drawer (interior mobile-nav) ================= */
 
   function initDrawer() {
-    var nav = $(".nav");
-    var inner = $(".topbar-inner");
-    if (!nav || !inner) return;
-
-    var burger = el("button", "icon-btn burger");
-    burger.type = "button";
-    burger.setAttribute("aria-label", "Open navigation");
-    burger.setAttribute("aria-expanded", "false");
-    burger.innerHTML = '<span class="burger-ico" aria-hidden="true"><i></i><i></i><i></i></span>';
-    inner.appendChild(burger);
+    var burger = $(".mobile-nav-btn");
+    var sidebar = $(".site-sidebar");
+    if (!burger) return;
 
     var scrim = el("div", "scrim");
     scrim.setAttribute("aria-hidden", "true");
@@ -174,7 +186,7 @@
 
     var head = el("div", "drawer-head");
     head.appendChild(el("div", "drawer-title", "Project Nobel"));
-    var close = el("button", "icon-btn");
+    var close = el("button", "drawer-close mat-cap press");
     close.type = "button";
     close.setAttribute("aria-label", "Close navigation");
     close.textContent = "✕";
@@ -182,11 +194,11 @@
     panel.appendChild(head);
 
     var list = el("nav", "drawer-links");
-    $$("a", nav).forEach(function (a) {
-      var c = a.cloneNode(true);
-      if (a.classList.contains("active")) c.classList.add("active");
-      list.appendChild(c);
-    });
+    if (sidebar) {
+      $$(".sidebar-nav a", sidebar).forEach(function (a) {
+        list.appendChild(a.cloneNode(true));
+      });
+    }
     panel.appendChild(list);
 
     /* page sections, so the hidden TOC is reachable on mobile too */
@@ -233,13 +245,15 @@
       a.addEventListener("click", function () { setOpen(false); });
     });
     window.addEventListener("resize", function () {
-      if (open && window.innerWidth > 940) setOpen(false);
+      if (open && window.innerWidth >= 1024) setOpen(false);
     });
   }
 
   /* ================= command palette ================= */
   /* Fuzzy ranking ported from interior.dev: sequential char match,
      streak bonus 4/char, +12 start-of-label, +8 boundary, -3 for keyword hits. */
+
+  var BOUNDARY = /[\s\-_/.:]/;
 
   function scoreOne(text, q, penalty) {
     text = text.toLowerCase();
@@ -251,10 +265,10 @@
         if (text[j] === c) { found = j; break; }
       }
       if (found < 0) return null;
+      streak = found === ti && i > 0 ? streak + 1 : 0;
+      score += 2 + streak * 4;
       if (found === 0) score += 12;
-      else if (/[\s\-_/&.,(]/.test(text[found - 1])) score += 8;
-      streak = (found === ti && i > 0) ? streak + 1 : 0;
-      score += streak * 4;
+      else if (BOUNDARY.test(text[found - 1])) score += 8;
       hits.push(found);
       ti = found + 1;
     }
@@ -321,15 +335,7 @@
 
     var here = location.pathname.split("/").pop() || "index.html";
 
-    var trigger = el("button", "icon-btn search-btn");
-    trigger.type = "button";
-    trigger.setAttribute("aria-label", "Search documentation");
-    trigger.innerHTML = '<span aria-hidden="true">⌕</span><kbd>⌘K</kbd>';
-    var nav = $(".nav");
-    if (nav) {
-      var themeBtn = $("[data-theme-toggle]", nav);
-      nav.insertBefore(trigger, themeBtn || null);
-    }
+    var trigger = $(".search-trigger");
 
     var scrim = el("div", "scrim scrim-palette");
     scrim.setAttribute("aria-hidden", "true");
@@ -338,7 +344,7 @@
     wrap.setAttribute("aria-modal", "true");
     wrap.setAttribute("aria-label", "Search documentation");
 
-    var box = el("div", "palette-box");
+    var box = el("div", "palette-box mat-float");
     var inputRow = el("div", "palette-input");
     inputRow.appendChild(el("span", "palette-ico", "⌕"));
     var input = document.createElement("input");
@@ -481,7 +487,7 @@
       else if (e.key === "Enter") { e.preventDefault(); run(); }
       else if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
     });
-    trigger.addEventListener("click", function () { setOpen(true); });
+    if (trigger) trigger.addEventListener("click", function () { setOpen(true); });
     scrim.addEventListener("click", function () { setOpen(false); });
 
     document.addEventListener("keydown", function (e) {
@@ -734,20 +740,379 @@
     });
   }
 
+  /* ================= text reveal (interior TextReveal) ================= */
+
+  var TR_DURATION = 600;
+  var TR_STAGGER = 0.055;
+  var TR_MAX = 1.6;
+
+  function startTextReveal(target) {
+    if (target.classList.contains("text-reveal-started")) return;
+    target.classList.add("text-reveal-started");
+
+    var units = $$(".text-reveal-unit", target);
+    var stepMs = target._trStepMs || 55;
+    var ease = "cubic-bezier(0.23, 1, 0.32, 1)";
+
+    units.forEach(function (u, i) {
+      if (reduced) {
+        u.style.opacity = "1";
+        u.style.transform = "none";
+        return;
+      }
+      try {
+        u.animate(
+          [
+            { opacity: 0, transform: "translateY(10px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ],
+          {
+            duration: TR_DURATION,
+            delay: i * stepMs,
+            easing: ease,
+            fill: "forwards",
+          }
+        );
+      } catch (e) {
+        u.style.opacity = "1";
+        u.style.transform = "none";
+      }
+    });
+  }
+
+  function buildTextReveal(target, opts) {
+    opts = opts || {};
+    var startOnView = opts.startOnView !== false;
+
+    if (target.hasAttribute("data-text-reveal")) return;
+    target.setAttribute("data-text-reveal", "");
+
+    var full = target.textContent.replace(/\s+/g, " ").trim();
+    var sr = el("span", "sr-only");
+    sr.textContent = full;
+
+    var live = el("span", "text-reveal-live");
+    live.setAttribute("aria-hidden", "true");
+
+    var idx = 0;
+
+    function addWord(word, parent) {
+      var u = el("span", "text-reveal-unit");
+      u.textContent = word;
+      u.style.opacity = "0";
+      u.style.transform = "translateY(10px)";
+      parent.appendChild(u);
+    }
+
+    function walk(node, parent) {
+      if (node.nodeType === 3) {
+        var bits = node.textContent.split(/\s+/).filter(Boolean);
+        bits.forEach(function (w, i) {
+          if (i > 0) parent.appendChild(document.createTextNode(" "));
+          addWord(w, parent);
+          idx++;
+        });
+      } else if (node.nodeName === "BR") {
+        parent.appendChild(document.createElement("br"));
+      } else if (node.nodeType === 1) {
+        var wrap = document.createElement(node.nodeName);
+        if (node.className) wrap.className = node.className;
+        if (node.id) wrap.id = node.id;
+        parent.appendChild(wrap);
+        Array.prototype.forEach.call(node.childNodes, function (c) { walk(c, wrap); });
+        if (!wrap.childNodes.length) wrap.remove();
+      }
+    }
+
+    Array.prototype.forEach.call(target.childNodes, function (c) { walk(c, live); });
+
+    target.textContent = "";
+    target.appendChild(sr);
+    target.appendChild(live);
+    target.classList.add("text-reveal");
+
+    var stepSec = idx > 1
+      ? Math.min(TR_STAGGER, Math.max(0, TR_MAX - TR_DURATION / 1000) / (idx - 1))
+      : 0;
+    target._trStepMs = Math.round(stepSec * 1000);
+
+    if (reduced) {
+      startTextReveal(target);
+      return;
+    }
+
+    if (!startOnView) {
+      setTimeout(function () { startTextReveal(target); }, 120);
+      return;
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      startTextReveal(target);
+      return;
+    }
+
+    var rootEl = scrollRoot();
+    var obs = new IntersectionObserver(function (entries) {
+      if (entries[0] && entries[0].isIntersecting) {
+        startTextReveal(target);
+        obs.disconnect();
+      }
+    }, {
+      root: rootEl === document.documentElement ? null : rootEl,
+      threshold: 0.15,
+    });
+    obs.observe(target);
+  }
+
+  function initTextReveal() {
+    $$(".hero h1, .hero .lede").forEach(function (heading) {
+      buildTextReveal(heading, { startOnView: false });
+    });
+    $$("main h2, .tile .t").forEach(function (heading) {
+      buildTextReveal(heading, { startOnView: true });
+    });
+  }
+
+  /* ================= show more (interior ShowMore) ================= */
+
+  var smId = 0;
+
+  function initShowMore() {
+    $$(".note, .tile .d").forEach(function (host) {
+      if (host.hasAttribute("data-show-more-ready")) return;
+      host.setAttribute("data-show-more-ready", "");
+
+      var lines = parseInt(host.getAttribute("data-show-more-lines") || "3", 10);
+      var maxH = parseInt(host.getAttribute("data-show-more-max") || "320", 10);
+      var inTile = host.closest(".tile");
+
+      var shell = el("div", "show-more-shell");
+      var region = el("div", "show-more-region");
+      var regionId = "show-more-" + (++smId);
+      region.id = regionId;
+
+      var content = el("div", "show-more-content");
+      if (host.classList.contains("note")) {
+        var title = $(".t", host);
+        Array.prototype.forEach.call(host.children, function (ch) {
+          if (ch !== title) content.appendChild(ch);
+        });
+      } else {
+        while (host.firstChild) content.appendChild(host.firstChild);
+      }
+      region.appendChild(content);
+
+      var veil = el("div", "show-more-veil");
+      veil.setAttribute("aria-hidden", "true");
+
+      shell.appendChild(region);
+      shell.appendChild(veil);
+
+      var btn = el("button", "show-more-btn mat-cap press");
+      btn.type = "button";
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-controls", regionId);
+      btn.innerHTML =
+        '<span class="show-more-labels">' +
+        '<span class="show-more-more">Show more</span>' +
+        '<span class="show-more-less">Show less</span>' +
+        '</span>' +
+        '<svg class="show-more-chevron" width="12" height="12" viewBox="0 0 256 256" aria-hidden="true">' +
+        '<polyline points="208 96 128 176 48 96" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg>';
+
+      host.classList.add("show-more");
+      host.appendChild(shell);
+      host.appendChild(btn);
+
+      var expanded = false;
+      var metrics = null;
+
+      function read() {
+        var styles = getComputedStyle(content);
+        var line = parseFloat(styles.lineHeight);
+        if (!line || !isFinite(line)) {
+          line = parseFloat(styles.fontSize) * 1.5;
+        }
+        var full = content.scrollHeight;
+        metrics = { line: line, full: full };
+        paint();
+      }
+
+      function paint() {
+        if (!metrics) return;
+        var clamped = metrics.line * lines;
+        var collapsed = Math.min(clamped, metrics.full);
+        var fullCap = Math.min(metrics.full, maxH);
+        var expandable = metrics.full - collapsed > 1;
+
+        btn.classList.toggle("show-more-hidden", !expandable);
+        if (!expandable) {
+          region.style.height = "auto";
+          region.style.maxHeight = "";
+          region.style.overflowY = "";
+          veil.setAttribute("data-off", "");
+          return;
+        }
+
+        var open = expanded;
+        var capped = metrics.full > maxH;
+        var scrollable = open && capped;
+        var h = open ? fullCap : collapsed;
+
+        region.style.height = h + "px";
+        region.style.maxHeight = open ? maxH + "px" : "";
+        region.style.overflowY = scrollable ? "auto" : "hidden";
+        if (scrollable) {
+          region.setAttribute("role", "region");
+          region.setAttribute("tabindex", "0");
+        } else {
+          region.removeAttribute("role");
+          region.removeAttribute("tabindex");
+        }
+
+        var veiled = !open || scrollable;
+        if (veiled) veil.removeAttribute("data-off");
+        else veil.setAttribute("data-off", "");
+
+        btn.setAttribute("aria-expanded", String(open));
+        host.classList.toggle("show-more-open", open);
+      }
+
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (expanded) region.scrollTop = 0;
+        expanded = !expanded;
+        paint();
+      });
+
+      if (inTile) {
+        btn.addEventListener("mousedown", function (e) { e.stopPropagation(); });
+      }
+
+      read();
+      if (typeof ResizeObserver !== "undefined") {
+        var ro = new ResizeObserver(read);
+        ro.observe(content);
+      }
+      window.addEventListener("resize", read, { passive: true });
+    });
+  }
+
+  /* ================= press depth (interior PressDepth) ================= */
+
+  var PD_DEPTH = 4;
+  var PD_TILT = 7;
+
+  function initPressDepth() {
+    $$(".press-depth").forEach(function (btn) {
+      var face = $(".press-depth-face", btn);
+      if (!face) return;
+
+      var pointerId = null;
+      var tracking = false;
+      var down = false;
+      var origin = null;
+
+      function contains(clientX, clientY) {
+        var r = btn.getBoundingClientRect();
+        return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+      }
+
+      function setPressed(next, ox, oy) {
+        down = next;
+        if (next) {
+          btn.setAttribute("data-pressed", "");
+          if (!reduced && ox != null && oy != null) {
+            face.style.setProperty("--pd-ty", PD_DEPTH + "px");
+            face.style.setProperty("--pd-rx", (-oy * PD_TILT) + "deg");
+            face.style.setProperty("--pd-ry", (ox * PD_TILT) + "deg");
+          } else {
+            face.style.setProperty("--pd-ty", PD_DEPTH + "px");
+            face.style.setProperty("--pd-rx", "0deg");
+            face.style.setProperty("--pd-ry", "0deg");
+          }
+        } else {
+          btn.removeAttribute("data-pressed");
+          face.style.setProperty("--pd-ty", "0");
+          face.style.setProperty("--pd-rx", "0deg");
+          face.style.setProperty("--pd-ry", "0deg");
+        }
+      }
+
+      function stop() {
+        pointerId = null;
+        tracking = false;
+        origin = null;
+        setPressed(false);
+      }
+
+      btn.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        var r = btn.getBoundingClientRect();
+        origin = {
+          x: Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1)),
+          y: Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1)),
+        };
+        pointerId = e.pointerId;
+        tracking = true;
+        setPressed(true, origin.x, origin.y);
+      });
+
+      function onMove(e) {
+        if (!tracking || e.pointerId !== pointerId) return;
+        setPressed(contains(e.clientX, e.clientY), origin && origin.x, origin && origin.y);
+      }
+
+      function onLift(e) {
+        if (e.pointerId !== pointerId) return;
+        stop();
+      }
+
+      btn.addEventListener("keydown", function (e) {
+        if (e.repeat) return;
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          setPressed(true, 0, 0);
+        }
+        if (e.key === "Escape") stop();
+      });
+
+      btn.addEventListener("keyup", function (e) {
+        if (e.key === " " || e.key === "Enter" || e.key === "Escape") stop();
+      });
+
+      btn.addEventListener("blur", stop);
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onLift);
+      window.addEventListener("pointercancel", onLift);
+      window.addEventListener("blur", stop);
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) stop();
+      });
+    });
+  }
+
   /* ================= boot ================= */
 
   function init() {
     if (reduced) document.documentElement.setAttribute("data-reduced", "");
-    paintThemeButtons(currentTheme());
-    $$("[data-theme-toggle]").forEach(function (b) {
-      b.addEventListener("click", toggleTheme);
-    });
+    paintThemeButtons(isDark());
+    var lightBtn = $("[data-theme-light]");
+    var darkBtn = $("[data-theme-dark]");
+    if (lightBtn) lightBtn.addEventListener("click", function () { setTheme(false); });
+    if (darkBtn) darkBtn.addEventListener("click", function () { setTheme(true); });
     initScroll();
     initDrawer();
     initPalette();
     initCopy();
     initTooltips();
     initSortable();
+    initTextReveal();
+    initShowMore();
+    initPressDepth();
   }
 
   if (document.readyState === "loading") {

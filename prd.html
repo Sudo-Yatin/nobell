@@ -1,29 +1,42 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" class="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Product Requirements — Project Nobel</title>
 <meta name="description" content="What Project Nobel is, who it is for, and what it must do. Written in plain language.">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 </head>
 <body>
 
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="index.html"><span class="brand-dot"></span> Project Nobel <small>Docs</small></a>
-    <nav class="nav">
+<div class="app-shell">
+  <aside class="site-sidebar" aria-label="Documentation">
+    <a class="sidebar-brand" href="index.html"><span class="brand-mark"></span> Project Nobel</a>
+    <nav class="sidebar-nav">
       <a href="index.html">Overview</a>
       <a href="prd.html" class="active">PRD</a>
       <a href="architecture.html">Architecture</a>
       <a href="data-model.html">Data &amp; API</a>
       <a href="roadmap.html">Roadmap</a>
-      <button class="icon-btn" data-theme-toggle type="button">◐</button>
     </nav>
-  </div>
-  <div class="progress"></div>
-</header>
-
+  </aside>
+  <div class="panel-column">
+    <div class="doc-panel mat-panel scroll-inset" id="doc-scroll">
+      <header class="doc-header">
+        <button class="mat-cap press mobile-nav-btn" type="button" aria-label="Open navigation" aria-expanded="false"><span class="burger-ico" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <span class="doc-breadcrumb meta">PRD</span>
+        <span class="header-spacer"></span>
+        <button class="mat-cap press search-trigger" type="button" aria-label="Search documentation"><span>Search</span><kbd class="meta">⌘K</kbd></button>
+        <div class="theme-toggle mat-well" role="group" aria-label="Theme">
+          <span class="theme-cap mat-cap" aria-hidden="true"></span>
+          <button type="button" data-theme-light aria-label="Light" aria-pressed="false">☀</button>
+          <button type="button" data-theme-dark aria-label="Dark" aria-pressed="true">☾</button>
+        </div>
+        <div class="progress-track" aria-hidden="true"><div class="progress"></div></div>
+      </header>
+      <div class="doc-fade-top"></div>
+      <div class="doc-body">
 <div class="wrap">
 
   <section class="hero">
@@ -527,8 +540,26 @@
       </div>
 
       <div class="pagenav">
-        <a href="index.html"><div class="k">Previous</div><div class="v">← Overview</div></a>
-        <a href="architecture.html"><div class="k">Next</div><div class="v">System Architecture →</div></a>
+        <a class="press-depth pagenav-btn pagenav-prev" href="index.html">
+          <span class="press-depth-base" aria-hidden="true"></span>
+          <span class="press-depth-face">
+            <span class="press-depth-highlight" aria-hidden="true"></span>
+            <span class="pagenav-inner">
+              <span class="k">Previous</span>
+              <span class="v">← Overview</span>
+            </span>
+          </span>
+        </a>
+        <a class="press-depth pagenav-btn pagenav-next" href="architecture.html">
+          <span class="press-depth-base" aria-hidden="true"></span>
+          <span class="press-depth-face">
+            <span class="press-depth-highlight" aria-hidden="true"></span>
+            <span class="pagenav-inner">
+              <span class="k">Next</span>
+              <span class="v">System Architecture →</span>
+            </span>
+          </span>
+        </a>
       </div>
 
     </main>
@@ -538,6 +569,11 @@
     <div>Project Nobel · Internal draft · Not for external distribution<br><a href="https://github.com/Sudo-Yatin/nobell/issues/new" rel="noopener">Suggest a change or flag an error →</a></div>
     <div><a href="index.html">Overview</a> · <a href="architecture.html">Architecture</a> · <a href="data-model.html">Data &amp; API</a> · <a href="roadmap.html">Roadmap</a></div>
   </footer>
+</div>
+      </div>
+      <div class="doc-fade-bottom"></div>
+    </div>
+  </div>
 </div>
 
 <script src="assets/search-index.js"></script>
